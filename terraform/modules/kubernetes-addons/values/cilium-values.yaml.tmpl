@@ -1,0 +1,70 @@
+kubeProxyReplacement: true
+autoDirectNodeRoutes: true
+ipv4NativeRoutingCIDR: ${pod_cidr_range}
+k8sServiceHost: "${cluster_host}"
+k8sServicePort: 443
+routingMode: "native"
+extraArgs:
+  - --devices="ens+"
+enableIPv4Masquerade: true
+enableIPv6Masquerade: true
+
+ipam:
+  mode: eni
+  eni:
+    enabled: true
+    subnetTags:
+      "kubernetes.io/cluster/${cluster_name}": "owned"
+    securityGroupTags:
+      "kubernetes.io/cluster/${cluster_name}": "owned"
+eni:
+  enabled: true
+  subnetTags:
+    "kubernetes.io/cluster/${cluster_name}": "owned"
+  securityGroupTags:
+    "kubernetes.io/cluster/${cluster_name}": "owned"
+devices:
+  - eth0
+bpf:
+  masquerade: true
+  datapathMode: netkit
+nodePort:
+  enabled: true
+cluster:
+  name: "${cluster_name}"
+operator:
+  replicas: 1
+  prometheus:
+    enabled: true
+  image:
+    repository: "quay.io/cilium/operator"
+    tag: "v1.16.4"
+  tolerations:
+    - key: node-type
+      operator: Equal
+      value: core
+      effect: NoSchedule
+
+hubble:
+  enabled: true
+  relay:
+    enabled: true
+    tolerations:
+      - key: node-type
+        operator: Equal
+        value: core
+        effect: NoSchedule
+  ui:
+    enabled: true
+    tolerations:
+      - key: node-type
+        operator: Equal
+        value: core
+        effect: NoSchedule
+prometheus:
+  enabled: true
+image:
+  repository: "quay.io/cilium/cilium"
+  tag: "v1.16.4"
+
+
