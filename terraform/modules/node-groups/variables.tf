@@ -19,6 +19,7 @@ variable "node_groups" {
       value  = string
       effect = string
     })), [])
+    availability_zones = optional(list(string), [])
   }))
   default = {}
 }

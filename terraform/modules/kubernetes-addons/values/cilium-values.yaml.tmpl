@@ -8,6 +8,9 @@ extraArgs:
   - --devices="ens+"
 enableIPv4Masquerade: true
 enableIPv6Masquerade: true
+loadBalancer:
+  algorithm: maglev
+  mode: dsr
 
 ipam:
   mode: eni

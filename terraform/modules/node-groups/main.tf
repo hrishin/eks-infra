@@ -9,6 +9,12 @@ terraform {
   }
 }
 
+# Data source to get subnet details for AZ filtering
+data "aws_subnet" "private" {
+  for_each = toset(var.private_subnet_ids)
+  id       = each.value
+}
+
 # Launch Template for each node group
 resource "aws_launch_template" "node_group" {
   for_each = var.node_groups
@@ -85,6 +91,14 @@ locals {
     "PreferNoSchedule"  = "PREFER_NO_SCHEDULE"
   }
 
+  # Filter subnets by availability zones for each node group
+  node_group_subnets = {
+    for k, v in var.node_groups : k => length(lookup(v, "availability_zones", [])) > 0 ? [
+      for subnet_id in var.private_subnet_ids :
+      subnet_id if contains(lookup(v, "availability_zones", []), data.aws_subnet.private[subnet_id].availability_zone)
+    ] : var.private_subnet_ids
+  }
+
   # Process node groups with taints
   node_groups_with_taints = {
     for k, v in var.node_groups : k => merge(
@@ -131,7 +145,7 @@ resource "aws_autoscaling_group" "node_group" {
   for_each = var.node_groups
 
   name                = "${var.cluster_name}-${each.key}"
-  vpc_zone_identifier = var.private_subnet_ids
+  vpc_zone_identifier = local.node_group_subnets[each.key]
 
   desired_capacity = lookup(each.value, "desired_size", 1)
   max_size         = lookup(each.value, "max_size", 3)

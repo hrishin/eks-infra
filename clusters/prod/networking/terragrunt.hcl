@@ -10,6 +10,6 @@ terraform {
 inputs = {
   cluster_name              = "infra-cluster"
   vpc_cidr                  = "10.0.0.0/16"
-  availability_zones        = [] # Will be populated by the module using data source
+  availability_zones        = ["eu-west-2a", "eu-west-2c"] # Only use AZs with g4dn capacity
   cluster_security_group_id = "" # Will be updated after cluster is created
 }
