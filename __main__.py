@@ -9,7 +9,6 @@ import pulumi
 import pulumi_aws as aws
 import pulumi_kubernetes as k8s
 from typing import List
-import yaml
 
 from pulumi_modules.shared.config import get_pulumi_config, load_node_groups_config
 from pulumi_modules.networking.networking import create_networking
