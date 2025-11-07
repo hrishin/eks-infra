@@ -5,10 +5,17 @@ Converted from Terraform/Terragrunt setup
 This is the main entry point that orchestrates all modules.
 """
 
+import sys
+from pathlib import Path
+
 import pulumi
 import pulumi_aws as aws
 import pulumi_kubernetes as k8s
 from typing import List
+
+MODULE_ROOT = Path(__file__).parent / "iac" / "v1.33-v1"
+if (module_root_str := str(MODULE_ROOT)) not in sys.path:
+    sys.path.insert(0, module_root_str)
 
 from pulumi_modules.shared.config import get_pulumi_config, load_node_groups_config
 from pulumi_modules.networking.networking import create_networking
