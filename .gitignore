@@ -1,38 +1,47 @@
-# Terraform
-.terraform/
-.terraform.lock.hcl
+# Terraform files
 *.tfstate
 *.tfstate.*
-.terraform.tfstate.lock.info
-
-# Terragrunt
+.terraform/
 .terragrunt-cache/
-terragrunt.hcl.backup
+*.tfvars
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
 
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
+# Pulumi files
 venv/
-env/
-ENV/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.pulumi/
+Pulumi.*.yaml
+!Pulumi.yaml
+!Pulumi.prod.yaml.example
 
-# IDE
+# Sensitive files
+kubeconfig.yaml
+*.pem
+*.key
+
+# IDE files
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
+.DS_Store
 
-# OS
+# OS files
 .DS_Store
 Thumbs.db
 
-# Pulumi
-.pulumi/
-
-# Kubeconfig
-kubeconfig.yaml
-
+# Logs
+*.log

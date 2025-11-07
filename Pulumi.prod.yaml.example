@@ -1,0 +1,30 @@
+# Example Pulumi stack configuration for production
+# Copy this file to Pulumi.prod.yaml and customize it
+
+config:
+  # AWS Configuration
+  # Set your AWS region (this is a provider config, not project config)
+  aws:region:
+    value: eu-west-2
+  
+  # Cluster Configuration
+  eks-pulumi:cluster_name: infra-cluster
+  eks-pulumi:cluster_version: "1.33"
+  
+  # Networking Configuration
+  eks-pulumi:vpc_cidr: 10.0.0.0/16
+  eks-pulumi:pod_cidr_range: 10.0.0.0/16
+  eks-pulumi:availability_zones: eu-west-2a,eu-west-2c
+  
+  # Admin Access
+  # Replace with your IAM user ARNs (comma-separated)
+  eks-pulumi:cluster_admin_user_arns: arn:aws:iam::203070858830:user/hrishi
+  
+  # Kubernetes Add-ons
+  eks-pulumi:enable_cilium: "true"
+  eks-pulumi:enable_coredns: "true"
+  
+  # Environment Tags
+  eks-pulumi:environment: production
+  eks-pulumi:project: eks-cluster
+

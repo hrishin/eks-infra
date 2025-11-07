@@ -1,0 +1,38 @@
+name: eks-pulumi
+runtime:
+  name: python
+  options:
+    virtualenv: venv
+description: EKS cluster infrastructure with Pulumi - converted from Terraform/Terragrunt
+config:
+  eks-pulumi:cluster_name:
+    description: Name of the EKS cluster
+    default: infra-cluster
+  eks-pulumi:cluster_version:
+    description: Kubernetes version for the EKS cluster
+    default: "1.33"
+  eks-pulumi:vpc_cidr:
+    description: CIDR block for VPC
+    default: "10.0.0.0/16"
+  eks-pulumi:pod_cidr_range:
+    description: CIDR range for pods
+    default: "10.0.0.0/16"
+  eks-pulumi:availability_zones:
+    description: List of availability zones (comma-separated)
+    default: "eu-west-2a,eu-west-2c"
+  eks-pulumi:cluster_admin_user_arns:
+    description: List of IAM user ARNs to grant cluster admin (comma-separated)
+    default: "arn:aws:iam::203070858830:user/hrishi"
+  eks-pulumi:enable_cilium:
+    description: Enable Cilium CNI
+    default: "true"
+  eks-pulumi:enable_coredns:
+    description: Enable CoreDNS
+    default: "true"
+  eks-pulumi:environment:
+    description: Environment name
+    default: production
+  eks-pulumi:project:
+    description: Project name
+    default: eks-cluster
+

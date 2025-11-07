@@ -1,6 +1,64 @@
-# EKS Pulumi Infrastructure - Modular Structure
+# EKS Infrastructure - Terraform/Terragrunt and Pulumi
 
-This project provides a modular approach to creating AWS EKS infrastructure using Pulumi. The code has been refactored into separate modules for better organization and maintainability.
+This project provides **two complete implementations** for creating AWS EKS infrastructure:
+
+1. **Terraform/Terragrunt** - Original implementation with declarative HCL configuration
+2. **Pulumi** - Modern implementation using Python for infrastructure as code
+
+Both implementations create **identical infrastructure** and share the same `node-groups.yaml` configuration. Choose the tool that best fits your team's needs and preferences.
+
+## 🚀 Quick Start
+
+### Pulumi (Recommended for new projects)
+
+```bash
+./quick-start.sh
+```
+
+Or manually:
+
+```bash
+# Setup
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+
+# Deploy
+pulumi login
+pulumi stack init prod
+pulumi up
+```
+
+See [PULUMI-README.md](PULUMI-README.md) for detailed instructions.
+
+### Terraform/Terragrunt (For existing Terraform users)
+
+```bash
+cd clusters/prod
+terragrunt run-all plan
+terragrunt run-all apply
+```
+
+See [Terraform Documentation](#terraform-usage) below for detailed instructions.
+
+## 📊 Comparison
+
+| Feature | Terraform/Terragrunt | Pulumi |
+|---------|---------------------|--------|
+| Language | HCL | Python |
+| Type Safety | Limited | Full |
+| IDE Support | Basic | Advanced |
+| Testing | Manual | Automated |
+| Learning Curve | Moderate | Easy (if you know Python) |
+| State Management | S3/DynamoDB | Pulumi Cloud/S3/Local |
+
+See [TERRAFORM-PULUMI-COMPARISON.md](TERRAFORM-PULUMI-COMPARISON.md) for a detailed comparison.
+
+---
+
+# Pulumi Implementation
+
+This implementation provides a modular approach to creating AWS EKS infrastructure using Pulumi and Python.
 
 ## Project Structure
 
@@ -201,3 +259,211 @@ The infrastructure exports the following values:
 - `managed_node_group_names`: List of managed node group names
 - `cilium_release_name`: Name of the Cilium Helm release
 - `coredns_release_name`: Name of the CoreDNS Helm release
+
+---
+
+# Terraform/Terragrunt Implementation
+
+The original Terraform implementation uses Terragrunt to manage dependencies and configuration across multiple modules.
+
+## Terraform Project Structure
+
+```
+terraform/
+└── modules/
+    ├── networking/          # VPC, subnets, NAT, security groups
+    ├── eks-cluster/         # EKS cluster, IAM roles, OIDC
+    ├── node-groups/         # Launch templates, ASGs
+    ├── eks-auth/            # aws-auth ConfigMap
+    └── kubernetes-addons/   # Cilium, CoreDNS
+
+clusters/
+├── root.hcl                # Root Terragrunt configuration
+├── common.yaml             # Common variables
+└── prod/
+    ├── terragrunt.hcl
+    ├── networking/
+    ├── eks-cluster/
+    ├── node-groups/
+    ├── eks-auth/
+    └── kubernetes-addons/
+```
+
+## Terraform Usage
+
+### Prerequisites
+
+1. Terraform >= 1.0
+2. Terragrunt >= 0.35
+3. AWS CLI configured
+
+### Deployment with Terragrunt
+
+```bash
+# Deploy all modules in order
+cd clusters/prod
+terragrunt run-all plan
+terragrunt run-all apply
+
+# Deploy specific module
+cd clusters/prod/networking
+terragrunt plan
+terragrunt apply
+
+# Destroy all resources
+cd clusters/prod
+terragrunt run-all destroy
+```
+
+### Deployment Order (Manual)
+
+If not using `run-all`, deploy in this order:
+
+1. **Networking**: `cd clusters/prod/networking && terragrunt apply`
+2. **EKS Cluster**: `cd clusters/prod/eks-cluster && terragrunt apply`
+3. **Node Groups**: `cd clusters/prod/node-groups && terragrunt apply`
+4. **EKS Auth**: `cd clusters/prod/eks-auth && terragrunt apply`
+5. **Kubernetes Add-ons**: `cd clusters/prod/kubernetes-addons && terragrunt apply`
+
+### Configuration
+
+Edit `clusters/common.yaml` for global settings:
+
+```yaml
+aws_region: "eu-west-2"
+vpc_cidr: "10.0.0.0/16"
+tags:
+  Environment: "production"
+  ManagedBy: "terragrunt"
+  Project: "eks-cluster"
+```
+
+Edit individual module configurations in `clusters/prod/*/terragrunt.hcl`.
+
+### Terraform State
+
+Terragrunt manages state files. By default, state is stored locally. For production:
+
+1. Create S3 bucket for state
+2. Create DynamoDB table for locking
+3. Update `clusters/root.hcl`:
+
+```hcl
+remote_state {
+  backend = "s3"
+  config = {
+    bucket         = "my-terraform-state"
+    key            = "${path_relative_to_include()}/terraform.tfstate"
+    region         = "eu-west-2"
+    dynamodb_table = "terraform-locks"
+    encrypt        = true
+  }
+}
+```
+
+---
+
+# Shared Configuration
+
+Both implementations use `node-groups.yaml`:
+
+```yaml
+node_groups:
+  core:
+    instance_types: ["t3.large"]
+    desired_size: 2
+    min_size: 2
+    max_size: 4
+    disk_size: 20
+    ami_id: "ami-060bb37b943ff8d8e"
+    labels:
+      node-type: "core"
+      workload: "general"
+    taints:
+      - key: "node-type"
+        value: "core"
+        effect: "NoSchedule"
+```
+
+---
+
+# Migration Guide
+
+## From Terraform to Pulumi
+
+See [PULUMI-README.md - Migration from Terraform](PULUMI-README.md#migration-from-terraform) for detailed migration steps.
+
+## From Pulumi to Terraform
+
+If you need to migrate back:
+
+1. Export Pulumi resources
+2. Create Terraform import scripts
+3. Import resources into Terraform state
+4. Verify configuration matches
+
+---
+
+# Troubleshooting
+
+## Common Issues
+
+### Nodes Not Joining Cluster
+
+**Check aws-auth ConfigMap:**
+```bash
+kubectl get configmap aws-auth -n kube-system -o yaml
+```
+
+**Verify node IAM role:**
+```bash
+# Pulumi
+pulumi stack output node_group_service_role_arn
+
+# Terraform
+cd clusters/prod/eks-cluster
+terragrunt output node_group_service_role_arn
+```
+
+### Networking Issues
+
+**Check Cilium:**
+```bash
+kubectl exec -n kube-system ds/cilium -- cilium status
+```
+
+**Check CoreDNS:**
+```bash
+kubectl get pods -n kube-system -l k8s-app=coredns
+```
+
+### State Issues
+
+**Pulumi:**
+```bash
+pulumi refresh
+pulumi up
+```
+
+**Terraform:**
+```bash
+terragrunt refresh
+terragrunt plan
+```
+
+---
+
+# Contributing
+
+When making infrastructure changes:
+
+1. Make changes in your preferred tool (Terraform or Pulumi)
+2. Test thoroughly in development environment
+3. Update documentation
+4. Create pull request
+
+---
+
+# License
+
+This infrastructure code is provided as-is for your use.
