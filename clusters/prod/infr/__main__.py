@@ -13,16 +13,20 @@ import pulumi_aws as aws
 import pulumi_kubernetes as k8s
 from typing import List
 
-MODULE_ROOT = Path(__file__).parent / "iac" / "v1.33-v1"
+REPO_ROOT = Path(__file__).resolve().parents[3]
+CLUSTER_ROOT = Path(__file__).resolve().parents[1]
+MODULE_ROOT = REPO_ROOT / "iac" / "v1.33-v1"
+NODE_GROUPS_CONFIG_PATH = CLUSTER_ROOT / "config.yaml"
+
 if (module_root_str := str(MODULE_ROOT)) not in sys.path:
     sys.path.insert(0, module_root_str)
 
-from pulumi_modules.shared.config import get_pulumi_config, load_node_groups_config
-from pulumi_modules.networking.networking import create_networking
-from pulumi_modules.eks_cluster.cluster import create_eks_cluster
-from pulumi_modules.node_groups.node_groups import create_node_groups
-from pulumi_modules.eks_auth.auth import create_eks_auth
-from pulumi_modules.kubernetes_addons.addons import create_kubernetes_addons
+from shared.config import get_pulumi_config, load_node_groups_config
+from networking.networking import create_networking
+from eks_cluster.cluster import create_eks_cluster
+from node_groups.node_groups import create_node_groups
+from eks_auth.auth import create_eks_auth
+from kubernetes_addons.addons import create_kubernetes_addons
 
 def main():
     """
@@ -33,7 +37,7 @@ def main():
     config_data = get_pulumi_config()
     
     # Load node groups configuration from YAML
-    node_groups_config = load_node_groups_config()
+    node_groups_config = load_node_groups_config(str(NODE_GROUPS_CONFIG_PATH))
     
     # Create tags
     tags = {

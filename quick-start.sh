@@ -46,6 +46,14 @@ echo -e "${GREEN}✓ AWS credentials configured${NC}"
 
 echo ""
 
+PROJECT_DIR="clusters/prod/infr"
+PULUMI_CMD="pulumi -C ${PROJECT_DIR}"
+
+if [ ! -d "${PROJECT_DIR}" ]; then
+    echo -e "${RED}✗ Pulumi project directory '${PROJECT_DIR}' not found.${NC}"
+    exit 1
+fi
+
 # Setup virtual environment if it doesn't exist
 if [ ! -d "venv" ]; then
     echo "Creating Python virtual environment..."
@@ -93,20 +101,20 @@ echo ""
 
 # Check if stack exists
 STACK_NAME=${1:-prod}
-if pulumi stack select $STACK_NAME 2>/dev/null; then
+if ${PULUMI_CMD} stack select "$STACK_NAME" 2>/dev/null; then
     echo -e "${YELLOW}⚠ Stack '$STACK_NAME' already exists${NC}"
     echo "Using existing stack..."
 else
     echo "Creating new stack: $STACK_NAME"
-    pulumi stack init $STACK_NAME
+    ${PULUMI_CMD} stack init "$STACK_NAME"
     echo -e "${GREEN}✓ Stack created${NC}"
     
     # Copy example config if available
-    if [ -f "Pulumi.prod.yaml.example" ] && [ "$STACK_NAME" == "prod" ]; then
+    if [ -f "${PROJECT_DIR}/Pulumi.prod.yaml.example" ] && [ "$STACK_NAME" == "prod" ]; then
         echo "Would you like to use the example configuration? [y/N]"
         read -p "> " use_example
         if [ "$use_example" == "y" ] || [ "$use_example" == "Y" ]; then
-            cp Pulumi.prod.yaml.example Pulumi.prod.yaml
+            cp "${PROJECT_DIR}/Pulumi.prod.yaml.example" "${PROJECT_DIR}/Pulumi.prod.yaml"
             echo -e "${GREEN}✓ Configuration copied from example${NC}"
             echo -e "${YELLOW}⚠ Please edit Pulumi.prod.yaml to customize your settings${NC}"
         fi
@@ -121,16 +129,16 @@ echo ""
 echo "Next steps:"
 echo ""
 echo "  1. Review configuration:"
-echo "     ${YELLOW}pulumi config${NC}"
+echo "     ${YELLOW}${PULUMI_CMD} config${NC}"
 echo ""
 echo "  2. Preview infrastructure changes:"
-echo "     ${YELLOW}pulumi preview${NC}"
+echo "     ${YELLOW}${PULUMI_CMD} preview${NC}"
 echo ""
 echo "  3. Deploy infrastructure:"
-echo "     ${YELLOW}pulumi up${NC}"
+echo "     ${YELLOW}${PULUMI_CMD} up${NC}"
 echo ""
 echo "  4. After deployment, get kubeconfig:"
-echo "     ${YELLOW}pulumi stack output kubeconfig > kubeconfig.yaml${NC}"
+echo "     ${YELLOW}${PULUMI_CMD} stack output kubeconfig > kubeconfig.yaml${NC}"
 echo "     ${YELLOW}export KUBECONFIG=\$(pwd)/kubeconfig.yaml${NC}"
 echo ""
 echo "  5. Verify cluster access:"
@@ -143,6 +151,6 @@ echo ""
 read -p "Would you like to preview the infrastructure now? [y/N] " preview_now
 if [ "$preview_now" == "y" ] || [ "$preview_now" == "Y" ]; then
     echo ""
-    pulumi preview
+    ${PULUMI_CMD} preview
 fi
 

@@ -5,6 +5,8 @@ set -e
 
 echo "Setting up Pulumi EKS infrastructure..."
 
+PROJECT_DIR="clusters/prod/infr"
+
 # Check if Python 3 is installed
 if ! command -v python3 &> /dev/null; then
     echo "Error: Python 3 is required but not installed."
@@ -37,11 +39,11 @@ echo ""
 echo "Next steps:"
 echo "1. Activate the virtual environment: source venv/bin/activate"
 echo "2. Login to Pulumi: pulumi login"
-echo "3. Create a new stack: pulumi stack init dev"
+echo "3. Create a new stack: pulumi -C ${PROJECT_DIR} stack init dev"
 echo "4. Configure the stack (optional, defaults are set in Pulumi.yaml):"
-echo "   pulumi config set aws:region eu-west-2"
-echo "   pulumi config set eks-pulumi:cluster_name infra-cluster"
-echo "5. Preview changes: pulumi preview"
-echo "6. Deploy infrastructure: pulumi up"
+echo "   pulumi -C ${PROJECT_DIR} config set aws:region eu-west-2"
+echo "   pulumi -C ${PROJECT_DIR} config set eks-pulumi:cluster_name infra-cluster"
+echo "5. Preview changes: pulumi -C ${PROJECT_DIR} preview"
+echo "6. Deploy infrastructure: pulumi -C ${PROJECT_DIR} up"
 echo ""
 

@@ -2,7 +2,7 @@ name: eks-pulumi
 runtime:
   name: python
   options:
-    virtualenv: venv
+    virtualenv: ../../../venv
 description: EKS cluster infrastructure with Pulumi - converted from Terraform/Terragrunt
 config:
   eks-pulumi:cluster_name:
