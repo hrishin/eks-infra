@@ -1,0 +1,61 @@
+autoDirectNodeRoutes: true
+bpf:
+  datapathMode: netkit
+  masquerade: true
+cluster:
+  name: ""
+devices:
+  - eth0
+enableIPv4Masquerade: true
+enableIPv6Masquerade: true
+extraArgs:
+  - --devices=ens+
+hubble:
+  enabled: true
+  relay:
+    enabled: true
+    tolerations:
+      - effect: NoSchedule
+        key: node-type
+        operator: Equal
+        value: core
+  ui:
+    enabled: true
+    tolerations:
+      - effect: NoSchedule
+        key: node-type
+        operator: Equal
+        value: core
+image:
+  repository: quay.io/cilium/cilium
+  tag: v1.16.4
+ipam:
+  eni:
+    enabled: true
+    securityGroupTags: {}
+    subnetTags: {}
+  mode: eni
+k8sServiceHost: ""
+k8sServicePort: 443
+kubeProxyReplacement: true
+loadBalancer:
+  algorithm: maglev
+  mode: dsr
+nodePort:
+  enabled: true
+operator:
+  image:
+    repository: quay.io/cilium/operator
+    tag: v1.16.4
+  prometheus:
+    enabled: true
+  replicas: 1
+  tolerations:
+    - effect: NoSchedule
+      key: node-type
+      operator: Equal
+      value: core
+prometheus:
+  enabled: true
+routingMode: native
+

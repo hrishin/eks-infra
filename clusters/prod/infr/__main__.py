@@ -15,8 +15,10 @@ from typing import List
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 CLUSTER_ROOT = Path(__file__).resolve().parents[1]
-MODULE_ROOT = REPO_ROOT / "iac" / "v1.33-v1"
+MODULE_ROOT = REPO_ROOT / "iac-modules" / "cluster-infra" / "v1.33-v1"
 NODE_GROUPS_CONFIG_PATH = CLUSTER_ROOT / "config.yaml"
+CILIUM_VALUES_PATH = Path(__file__).resolve().parent / "cilium-values.yaml"
+COREDNS_VALUES_PATH = Path(__file__).resolve().parent / "coredns-values.yaml"
 
 if (module_root_str := str(MODULE_ROOT)) not in sys.path:
     sys.path.insert(0, module_root_str)
@@ -126,6 +128,8 @@ def main():
         cluster=cluster["cluster"],
         aws_auth_configmap=eks_auth["aws_auth_configmap"],
         region=config_data["region"],
+        cilium_values_path=str(CILIUM_VALUES_PATH),
+        coredns_values_path=str(COREDNS_VALUES_PATH),
     )
     
     # Export outputs
