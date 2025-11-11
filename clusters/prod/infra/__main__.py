@@ -39,6 +39,13 @@ def main():
     # Load configuration
     config_data = get_pulumi_config()
     
+    flux_git_secret_values_path = config_data.get("flux_git_secret_values_path")
+    if flux_git_secret_values_path:
+        flux_git_secret_values_path = Path(flux_git_secret_values_path)
+        if not flux_git_secret_values_path.is_absolute():
+            flux_git_secret_values_path = REPO_ROOT / flux_git_secret_values_path
+        flux_git_secret_values_path = str(flux_git_secret_values_path)
+
     # Load node groups configuration from YAML
     node_groups_config = load_node_groups_config(str(NODE_GROUPS_CONFIG_PATH))
     
@@ -137,6 +144,7 @@ def main():
         flux_git_branch=config_data["flux_git_branch"],
         flux_git_path=config_data["flux_git_path"],
         flux_git_secret_name=config_data["flux_git_secret_name"],
+        flux_git_secret_values_path=flux_git_secret_values_path,
         flux_sops_secret_name=config_data["flux_sops_secret_name"],
         flux_git_interval=config_data["flux_git_interval"],
         flux_kustomization_interval=config_data["flux_kustomization_interval"],

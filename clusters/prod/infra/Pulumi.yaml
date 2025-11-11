@@ -50,6 +50,9 @@ config:
   eks-pulumi:flux_git_secret_name:
     description: Kubernetes secret containing Git credentials for Flux
     default: flux-system
+  eks-pulumi:flux_git_secret_values_path:
+    description: Path to the SOPS-encrypted values file for the Flux Git secret
+    default: config/config.enc.yaml
   eks-pulumi:flux_sops_secret_name:
     description: Kubernetes secret containing SOPS keys for Flux decryption
     default: sops-age

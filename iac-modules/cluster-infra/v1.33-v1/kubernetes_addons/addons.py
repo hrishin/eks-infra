@@ -3,6 +3,8 @@ Kubernetes Add-ons (Cilium CNI and CoreDNS)
 Equivalent to terraform/modules/kubernetes-addons
 """
 
+import os
+import subprocess
 from copy import deepcopy
 from typing import Any, Dict, List, Optional
 
@@ -304,6 +306,51 @@ def _set_nested_value(target: Dict[str, Any], keys: List[str], value: Any) -> No
     current[keys[-1]] = value
 
 
+def _decrypt_sops_mapping(file_path: str, description: str) -> Optional[Dict[str, Any]]:
+    """
+    Decrypt a SOPS-managed file and deserialize it into a mapping.
+    """
+
+    if not file_path:
+        return None
+
+    if not os.path.isfile(file_path):
+        pulumi.log.warn(f"{description} encrypted values file {file_path} not found. Skipping.")
+        return None
+
+    try:
+        completed = subprocess.run(
+            ["sops", "-d", file_path],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except FileNotFoundError:
+        pulumi.log.warn("sops binary not found in PATH. Skipping decryption for Flux Git secret.")
+        return None
+    except subprocess.CalledProcessError as exc:
+        pulumi.log.warn(
+            f"Failed to decrypt {description} values from {file_path}: {exc.stderr or exc}. Skipping."
+        )
+        return None
+
+    try:
+        data = yaml.safe_load(completed.stdout) or {}
+    except Exception as exc:  # noqa: BLE001
+        pulumi.log.warn(
+            f"Failed to deserialize decrypted {description} values from {file_path}: {exc}. Skipping."
+        )
+        return None
+
+    if not isinstance(data, dict):
+        pulumi.log.warn(
+            f"Decrypted {description} values from {file_path} must deserialize to a mapping. Skipping."
+        )
+        return None
+
+    return data
+
+
 def create_kubernetes_addons(
     cluster_name: str,
     cluster_endpoint: pulumi.Output,
@@ -322,6 +369,7 @@ def create_kubernetes_addons(
     flux_git_branch: Optional[str] = None,
     flux_git_path: Optional[str] = None,
     flux_git_secret_name: Optional[str] = None,
+    flux_git_secret_values_path: Optional[str] = None,
     flux_sops_secret_name: Optional[str] = None,
     flux_git_interval: Optional[str] = None,
     flux_kustomization_interval: Optional[str] = None,
@@ -497,7 +545,84 @@ users:
         )
         result["flux_namespace"] = flux_namespace
         deps.append(flux_namespace)
+
+        flux_sops_secret = None
+        flux_git_secret = None
+        if flux_sops_secret_name:
+            sops_age_key_path = os.environ.get("SOPS_AGE_KEY_FILE")
+            if not sops_age_key_path:
+                pulumi.log.warn(
+                    "Environment variable SOPS_AGE_KEY_FILE is not set. Skipping creation of the Flux SOPS secret."
+                )
+            else:
+                try:
+                    with open(sops_age_key_path, "r", encoding="utf-8") as age_key_file:
+                        sops_age_key_content = age_key_file.read()
+                except FileNotFoundError:
+                    pulumi.log.warn(
+                        f"SOPS Age key file {sops_age_key_path} not found. Skipping creation of the Flux SOPS secret."
+                    )
+                except Exception as exc:  # noqa: BLE001
+                    pulumi.log.warn(
+                        f"Failed to read SOPS Age key file {sops_age_key_path}: {exc}. Skipping creation of the Flux SOPS secret."
+                    )
+                else:
+                    flux_sops_secret = k8s.core.v1.Secret(
+                        flux_sops_secret_name,
+                        metadata={"name": flux_sops_secret_name, "namespace": "flux-system"},
+                        string_data={"age.agekey": sops_age_key_content},
+                        type="Opaque",
+                        opts=pulumi.ResourceOptions(
+                            provider=k8s_provider,
+                            depends_on=[flux_namespace],
+                            retain_on_delete=True,
+                        ),
+                    )
+                    result["flux_sops_secret"] = flux_sops_secret
+                    deps.append(flux_sops_secret)
         
+        if flux_git_secret_name and flux_git_secret_values_path:
+            secret_values = _decrypt_sops_mapping(
+                flux_git_secret_values_path,
+                "Flux Git secret",
+            )
+            if secret_values:
+                github_values = secret_values.get("github")
+                username = github_values.get("username")
+                token = github_values.get("token")
+
+                if not username or not token:
+                    pulumi.log.warn(
+                        f"Flux Git secret values file {flux_git_secret_values_path} must contain both username and token."
+                    )
+
+                secret_args: Dict[str, Any] = {}
+                secret_args["string_data"] = {
+                    "username": username,
+                    "token": token,
+                }
+                if secret_args:
+                    flux_git_secret = k8s.core.v1.Secret(
+                        flux_git_secret_name,
+                        metadata={"name": flux_git_secret_name, "namespace": "flux-system"},
+                        opts=pulumi.ResourceOptions(
+                            provider=k8s_provider,
+                            depends_on=[flux_namespace],
+                            retain_on_delete=True,
+                        ),
+                        **secret_args,
+                    )
+                    result["flux_git_secret"] = flux_git_secret
+                    deps.append(flux_git_secret)
+                else:
+                    pulumi.log.warn(
+                        f"Flux Git secret values from {flux_git_secret_values_path} could not be converted into Kubernetes Secret data."
+                    )
+        elif flux_git_secret_name and not flux_git_secret_values_path:
+            pulumi.log.warn(
+                "Flux Git secret name provided but no encrypted values path supplied; skipping secret creation."
+            )
+
         flux_release = k8s.helm.v3.Release(
             "fluxcd",
             name="fluxcd",
