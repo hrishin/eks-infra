@@ -133,6 +133,13 @@ def main():
         cilium_values_path=str(CILIUM_VALUES_PATH),
         coredns_values_path=str(COREDNS_VALUES_PATH),
         flux_values_path=str(FLUX_VALUES_PATH),
+        flux_git_url=config_data["flux_git_url"],
+        flux_git_branch=config_data["flux_git_branch"],
+        flux_git_path=config_data["flux_git_path"],
+        flux_git_secret_name=config_data["flux_git_secret_name"],
+        flux_sops_secret_name=config_data["flux_sops_secret_name"],
+        flux_git_interval=config_data["flux_git_interval"],
+        flux_kustomization_interval=config_data["flux_kustomization_interval"],
     )
     
     # Export outputs

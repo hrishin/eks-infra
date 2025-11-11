@@ -38,4 +38,25 @@ config:
   eks-pulumi:project:
     description: Project name
     default: eks-cluster
+  eks-pulumi:flux_git_url:
+    description: Git repository URL for Flux source
+    default: https://github.com/hrishin/eks-infra
+  eks-pulumi:flux_git_branch:
+    description: Git branch for Flux source
+    default: main
+  eks-pulumi:flux_git_path:
+    description: Repository path for Flux Kustomization
+    default: clusters/prod/extensions
+  eks-pulumi:flux_git_secret_name:
+    description: Kubernetes secret containing Git credentials for Flux
+    default: flux-system
+  eks-pulumi:flux_sops_secret_name:
+    description: Kubernetes secret containing SOPS keys for Flux decryption
+    default: sops-age
+  eks-pulumi:flux_git_interval:
+    description: Reconciliation interval for Flux GitRepository
+    default: 1m0s
+  eks-pulumi:flux_kustomization_interval:
+    description: Reconciliation interval for Flux Kustomization
+    default: 10m0s
 

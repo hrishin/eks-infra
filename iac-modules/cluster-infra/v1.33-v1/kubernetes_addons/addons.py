@@ -318,6 +318,13 @@ def create_kubernetes_addons(
     cilium_values_path: Optional[str] = None,
     coredns_values_path: Optional[str] = None,
     flux_values_path: Optional[str] = None,
+    flux_git_url: Optional[str] = None,
+    flux_git_branch: Optional[str] = None,
+    flux_git_path: Optional[str] = None,
+    flux_git_secret_name: Optional[str] = None,
+    flux_sops_secret_name: Optional[str] = None,
+    flux_git_interval: Optional[str] = None,
+    flux_kustomization_interval: Optional[str] = None,
 ) -> dict:
     """
     Install Kubernetes add-ons via Helm
@@ -335,6 +342,13 @@ def create_kubernetes_addons(
         cilium_values_path: Optional path to YAML file with base values for the Cilium Helm release
         coredns_values_path: Optional path to YAML file with base values for the CoreDNS Helm release
         flux_values_path: Optional path to YAML file with base values for the Flux Helm release
+        flux_git_url: URL of the Git repository for Flux synchronization
+        flux_git_branch: Branch of the Git repository for Flux synchronization
+        flux_git_path: Path within the Git repository for Flux Kustomization
+        flux_git_secret_name: Kubernetes secret containing Git credentials for Flux
+        flux_sops_secret_name: Kubernetes secret containing SOPS keys for Flux decryption
+        flux_git_interval: Reconciliation interval for the Flux GitRepository
+        flux_kustomization_interval: Reconciliation interval for the Flux Kustomization
     Returns:
         Dictionary containing addon resources
     """
@@ -504,5 +518,60 @@ users:
         )
         
         result["flux_release"] = flux_release
+
+        if flux_git_url:
+            git_repo_spec: Dict[str, Any] = {
+                "interval": flux_git_interval or "1m0s",
+                "url": flux_git_url,
+            }
+            if flux_git_branch:
+                git_repo_spec["ref"] = {"branch": flux_git_branch}
+            if flux_git_secret_name:
+                git_repo_spec["secretRef"] = {"name": flux_git_secret_name}
+
+            git_repo_depends = deps + [flux_release]
+
+            flux_git_repository = k8s.apiextensions.CustomResource(
+                "flux-system-git-repository",
+                api_version="source.toolkit.fluxcd.io/v1beta2",
+                kind="GitRepository",
+                metadata={"name": "flux-system", "namespace": "flux-system"},
+                spec=git_repo_spec,
+                opts=pulumi.ResourceOptions(
+                    provider=k8s_provider,
+                    depends_on=git_repo_depends,
+                    retain_on_delete=True,
+                ),
+            )
+            result["flux_git_repository"] = flux_git_repository
+
+            kustomization_spec: Dict[str, Any] = {
+                "interval": flux_kustomization_interval or "10m0s",
+                "path": flux_git_path or "./",
+                "prune": True,
+                "sourceRef": {
+                    "kind": "GitRepository",
+                    "name": "flux-system",
+                },
+            }
+            if flux_sops_secret_name:
+                kustomization_spec["decryption"] = {
+                    "provider": "sops",
+                    "secretRef": {"name": flux_sops_secret_name},
+                }
+
+            flux_kustomization = k8s.apiextensions.CustomResource(
+                "flux-system-kustomization",
+                api_version="kustomize.toolkit.fluxcd.io/v1beta2",
+                kind="Kustomization",
+                metadata={"name": "flux-system", "namespace": "flux-system"},
+                spec=kustomization_spec,
+                opts=pulumi.ResourceOptions(
+                    provider=k8s_provider,
+                    depends_on=[flux_git_repository, flux_release],
+                    retain_on_delete=True,
+                ),
+            )
+            result["flux_kustomization"] = flux_kustomization
     return result
 
