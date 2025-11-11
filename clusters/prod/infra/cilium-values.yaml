@@ -10,6 +10,10 @@ enableIPv4Masquerade: true
 enableIPv6Masquerade: true
 extraArgs:
   - --devices=ens+
+eni:
+  enabled: true
+routingMode: native
+
 hubble:
   enabled: true
   relay:
@@ -57,5 +61,4 @@ operator:
       value: core
 prometheus:
   enabled: true
-routingMode: native
 

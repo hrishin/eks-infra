@@ -1,0 +1,37 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: flux-operator
+  namespace: flux-operator
+spec:
+  releaseName: flux-operator
+  chart:
+    spec:
+      chart: flux-operator
+      version: "0.33.0" 
+      sourceRef:
+        kind: HelmRepository
+        name: flux-operator
+        namespace: flux-operator
+  interval: 2m
+  values:
+    resources:
+      limits:
+        memory: 70Mi
+      requests:
+        memory: 70Mi
+    tolerations:
+      - key: node-type
+        operator: Equal
+        value: core
+        effect: NoSchedule
+    affinity:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+            - matchExpressions:
+                - key: node-type
+                  operator: Equal
+                  value: core
+                  effect: NoSchedule
+    

@@ -170,6 +170,109 @@ _DEFAULT_COREDNS_VALUES: Dict[str, Any] = {
 }
 
 
+_DEFAULT_FLUX_VALUES: Dict[str, Any] = {
+    "installCRDs": True,
+    "notificationController": {
+        "resources": {
+            "limits": {"memory": "170Mi"},
+            "requests": {"memory": "170Mi"},
+        },
+        "tolerations": [
+            {
+                "key": "node-type",
+                "operator": "Equal",
+                "value": "core",
+                "effect": "NoSchedule",
+            }
+        ],
+    },
+    "sourceController": {
+        "resources": {
+            "limits": {"memory": "170Mi"},
+            "requests": {"memory": "170Mi"},
+        },
+        "tolerations": [
+            {
+                "key": "node-type",
+                "operator": "Equal",
+                "value": "core",
+                "effect": "NoSchedule",
+            }
+        ],
+    },
+    "sourceWatcher": {
+        "resources": {
+            "limits": {"memory": "170Mi"},
+            "requests": {"memory": "170Mi"},
+        },
+        "tolerations": [
+            {
+                "key": "node-type",
+                "operator": "Equal",
+                "value": "core",
+                "effect": "NoSchedule",
+            }
+        ],
+    },
+    "kustomizeController": {
+        "resources": {
+            "limits": {"memory": "170Mi"},
+            "requests": {"memory": "170Mi"},
+        },
+        "tolerations": [
+            {
+                "key": "node-type",
+                "operator": "Equal",
+                "value": "core",
+                "effect": "NoSchedule",
+            }
+        ],
+    },
+    "imageReflectionController": {
+        "resources": {
+            "limits": {"memory": "170Mi"},
+            "requests": {"memory": "170Mi"},
+        },
+        "tolerations": [
+            {
+                "key": "node-type",
+                "operator": "Equal",
+                "value": "core",
+                "effect": "NoSchedule",
+            }
+        ],
+    },
+    "imageAutomationController": {
+        "resources": {
+            "limits": {"memory": "170Mi"},
+            "requests": {"memory": "170Mi"},
+        },
+        "tolerations": [
+            {
+                "key": "node-type",
+                "operator": "Equal",
+                "value": "core",
+                "effect": "NoSchedule",
+            }
+        ],
+    },
+    "helmController": {
+        "resources": {
+            "limits": {"memory": "170Mi"},
+            "requests": {"memory": "170Mi"},
+        },
+        "tolerations": [
+            {
+                "key": "node-type",
+                "operator": "Equal",
+                "value": "core",
+                "effect": "NoSchedule",
+            }
+        ],
+    },
+}
+
+
 def _load_yaml_mapping(file_path: str, component_name: str) -> Dict[str, Any]:
     try:
         with open(file_path, "r") as file:
@@ -208,11 +311,13 @@ def create_kubernetes_addons(
     pod_cidr_range: str,
     enable_cilium: bool,
     enable_coredns: bool,
+    enable_flux: bool,
     cluster: Any,
     aws_auth_configmap: Any,
     region: str,
     cilium_values_path: Optional[str] = None,
     coredns_values_path: Optional[str] = None,
+    flux_values_path: Optional[str] = None,
 ) -> dict:
     """
     Install Kubernetes add-ons via Helm
@@ -229,7 +334,7 @@ def create_kubernetes_addons(
         region: AWS region where the cluster lives
         cilium_values_path: Optional path to YAML file with base values for the Cilium Helm release
         coredns_values_path: Optional path to YAML file with base values for the CoreDNS Helm release
-        
+        flux_values_path: Optional path to YAML file with base values for the Flux Helm release
     Returns:
         Dictionary containing addon resources
     """
@@ -279,7 +384,9 @@ users:
     coredns_base_values: Dict[str, Any] = {}
     if enable_coredns and coredns_values_path:
         coredns_base_values = _load_yaml_mapping(coredns_values_path, "CoreDNS")
-    
+    flux_base_values: Dict[str, Any] = {}
+    if enable_flux and flux_values_path:
+        flux_base_values = _load_yaml_mapping(flux_values_path, "Flux")
     # Install Cilium CNI
     if enable_cilium:
         cluster_host = cluster_endpoint.apply(lambda ep: ep.replace("https://", ""))
@@ -355,5 +462,47 @@ users:
         
         result["coredns_release"] = coredns_release
     
+    # Install Flux
+    if enable_flux:
+        flux_values = deepcopy(flux_base_values) if flux_base_values else deepcopy(_DEFAULT_FLUX_VALUES)
+        
+        deps = [cluster, aws_auth_configmap]
+        if "cilium_release" in result:
+            deps.append(result["cilium_release"])
+        if "coredns_release" in result:
+            deps.append(result["coredns_release"])
+        
+        flux_namespace = k8s.core.v1.Namespace(
+            "flux-system",
+            metadata={"name": "flux-system"},
+            opts=pulumi.ResourceOptions(
+                provider=k8s_provider,
+                depends_on=[cluster, aws_auth_configmap],
+                retain_on_delete=True,
+            ),
+        )
+        result["flux_namespace"] = flux_namespace
+        deps.append(flux_namespace)
+        
+        flux_release = k8s.helm.v3.Release(
+            "fluxcd",
+            name="fluxcd",
+            chart="flux2",
+            repository_opts=k8s.helm.v3.RepositoryOptsArgs(
+                repo="https://fluxcd-community.github.io/helm-charts",
+            ),
+            version="2.7.0",
+            namespace="flux-system",
+            values=flux_values,
+            skip_await=False,
+            opts=pulumi.ResourceOptions(
+                provider=k8s_provider,
+                depends_on=deps,
+                ignore_changes=["values"],
+                retain_on_delete=True,
+            ),
+        )
+        
+        result["flux_release"] = flux_release
     return result
 

@@ -29,6 +29,9 @@ config:
   eks-pulumi:enable_coredns:
     description: Enable CoreDNS
     default: "true"
+  eks-pulumi:enable_flux:
+    description: Enable Flux
+    default: "true"
   eks-pulumi:environment:
     description: Environment name
     default: production

@@ -19,6 +19,7 @@ MODULE_ROOT = REPO_ROOT / "iac-modules" / "cluster-infra" / "v1.33-v1"
 NODE_GROUPS_CONFIG_PATH = CLUSTER_ROOT / "config.yaml"
 CILIUM_VALUES_PATH = Path(__file__).resolve().parent / "cilium-values.yaml"
 COREDNS_VALUES_PATH = Path(__file__).resolve().parent / "coredns-values.yaml"
+FLUX_VALUES_PATH = Path(__file__).resolve().parent / "flux-values.yaml"
 
 if (module_root_str := str(MODULE_ROOT)) not in sys.path:
     sys.path.insert(0, module_root_str)
@@ -125,11 +126,13 @@ def main():
         pod_cidr_range=config_data["pod_cidr_range"],
         enable_cilium=config_data["enable_cilium"],
         enable_coredns=config_data["enable_coredns"],
+        enable_flux=config_data["enable_flux"],
         cluster=cluster["cluster"],
         aws_auth_configmap=eks_auth["aws_auth_configmap"],
         region=config_data["region"],
         cilium_values_path=str(CILIUM_VALUES_PATH),
         coredns_values_path=str(COREDNS_VALUES_PATH),
+        flux_values_path=str(FLUX_VALUES_PATH),
     )
     
     # Export outputs
@@ -193,6 +196,8 @@ users:
         pulumi.export("cilium_release_name", addons["cilium_release"].name)
     if addons.get("coredns_release"):
         pulumi.export("coredns_release_name", addons["coredns_release"].name)
+    if addons.get("flux_release"):
+        pulumi.export("flux_release_name", addons["flux_release"].name)
 
 # Run the main function
 main()

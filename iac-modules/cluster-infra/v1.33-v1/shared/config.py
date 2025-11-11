@@ -48,6 +48,10 @@ def get_pulumi_config() -> Dict[str, Any]:
     enable_coredns = config.get_bool("enable_coredns")
     if enable_coredns is None:
         enable_coredns = True
+
+    enable_flux = config.get_bool("enable_flux")
+    if enable_flux is None:
+        enable_flux = True
     
     # Get environment and project tags
     environment = config.get("environment") or "production"
@@ -63,6 +67,7 @@ def get_pulumi_config() -> Dict[str, Any]:
         "cluster_admin_user_arns": cluster_admin_user_arns,
         "enable_cilium": enable_cilium,
         "enable_coredns": enable_coredns,
+        "enable_flux": enable_flux,
         "environment": environment,
         "project": project,
     }

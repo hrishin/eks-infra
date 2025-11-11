@@ -1,0 +1,9 @@
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: flux-instance
+  namespace: flux-instance
+spec:
+  interval: 20m
+  type: oci
+  url: oci://ghcr.io/controlplaneio-fluxcd/charts/flux-instance
