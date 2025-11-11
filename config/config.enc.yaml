@@ -1,0 +1,18 @@
+github:
+    username: ENC[AES256_GCM,data:0BRjW9lJ+g==,iv:1NmiCxMMDiPtOGN0KOVvhFVk26Po4bYPh2gDL8purR4=,tag:6LMXYDsR3sbHtFUOdVM9fg==,type:str]
+    token: ENC[AES256_GCM,data:/fuoXkJhUSWbor5blao72U82V14vr+acKfVJCOQfMCzOkmlWV5+3FQ==,iv:N8XlvOG/KuYqhbg6/0dHLR+orLMvSGmvoiHmPin75I4=,tag:joVRaOKxoOFspkFEZ2lxAg==,type:str]
+sops:
+    age:
+        - recipient: age1ppc0g76en84sppjk7qxljz75wkdvryj87q852pmxuw8k8cwxevqsgpwz3l
+          enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBkWTYvODhHTTJkbXM0eWc5
+            KzhuVG5hT2pIeEovcXF5Q01mL1ZFdVU3RGlZCit0VU1RNWJOc1dRMFNGM2RmOXM3
+            V3pNZFFqV2V4V25hZmtpRzZyWFc1bjQKLS0tIDRWajBKMUNWMWoweHlFblVmMnNt
+            ek9kMTRsQlBsVmRCQmVJMDF4ZjNhL2sKxtT07KC+XkzTusPNYvfwFNsxYN8ZB3TO
+            BYnRnk8pYLUBoJvqAnv7n8HRk6pJH5c8g4KSSbJHF1nvW0JBkmQqng==
+            -----END AGE ENCRYPTED FILE-----
+    lastmodified: "2025-11-11T20:19:44Z"
+    mac: ENC[AES256_GCM,data:K2INLF/2JPMWY5foQVrRG0bjx127V7p6Lso6brkmbaFNaYMmRhk9tgYWgzBU/SfhdCT2Z75qvvBBM04aYUnivk9Aqpxqd6JXR1/tZrxNNmF3UyQXcs+HuufxN6MljYs+imwDkrtO5nalwvHKTrYDO+icE3WcK/Y1obEyyLnW1ik=,iv:HOeu/9TWGT97psFsSB3l1lY+pOXdK6E1PQc78iQLT+I=,tag:dVfOZHJ5HwUrKbkmUnUKxw==,type:str]
+    unencrypted_suffix: _unencrypted
+    version: 3.11.0
