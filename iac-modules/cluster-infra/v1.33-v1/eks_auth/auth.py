@@ -4,6 +4,7 @@ Equivalent to terraform/modules/eks-auth
 """
 
 import base64
+from time import sleep
 
 import pulumi
 import pulumi_aws as aws
@@ -100,6 +101,7 @@ users:
             "mapUsers": yaml_lib.dump(map_users, default_flow_style=False),
         }
     
+    sleep(20)
     aws_auth_data = node_role_arn.apply(create_aws_auth_data)
     
     # Create aws-auth ConfigMap

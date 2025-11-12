@@ -357,21 +357,11 @@ def create_kubernetes_addons(
     pod_cidr_range: str,
     enable_cilium: bool,
     enable_coredns: bool,
-    enable_flux: bool,
     cluster: Any,
     aws_auth_configmap: Any,
     region: str,
     cilium_values_path: Optional[str] = None,
     coredns_values_path: Optional[str] = None,
-    flux_values_path: Optional[str] = None,
-    flux_git_url: Optional[str] = None,
-    flux_git_branch: Optional[str] = None,
-    flux_git_path: Optional[str] = None,
-    flux_git_secret_name: Optional[str] = None,
-    flux_git_secret_values_path: Optional[str] = None,
-    flux_sops_secret_name: Optional[str] = None,
-    flux_git_interval: Optional[str] = None,
-    flux_kustomization_interval: Optional[str] = None,
 ) -> dict:
     """
     Install Kubernetes add-ons via Helm
@@ -388,14 +378,6 @@ def create_kubernetes_addons(
         region: AWS region where the cluster lives
         cilium_values_path: Optional path to YAML file with base values for the Cilium Helm release
         coredns_values_path: Optional path to YAML file with base values for the CoreDNS Helm release
-        flux_values_path: Optional path to YAML file with base values for the Flux Helm release
-        flux_git_url: URL of the Git repository for Flux synchronization
-        flux_git_branch: Branch of the Git repository for Flux synchronization
-        flux_git_path: Path within the Git repository for Flux Kustomization
-        flux_git_secret_name: Kubernetes secret containing Git credentials for Flux
-        flux_sops_secret_name: Kubernetes secret containing SOPS keys for Flux decryption
-        flux_git_interval: Reconciliation interval for the Flux GitRepository
-        flux_kustomization_interval: Reconciliation interval for the Flux Kustomization
     Returns:
         Dictionary containing addon resources
     """
@@ -445,9 +427,6 @@ users:
     coredns_base_values: Dict[str, Any] = {}
     if enable_coredns and coredns_values_path:
         coredns_base_values = _load_yaml_mapping(coredns_values_path, "CoreDNS")
-    flux_base_values: Dict[str, Any] = {}
-    if enable_flux and flux_values_path:
-        flux_base_values = _load_yaml_mapping(flux_values_path, "Flux")
     # Install Cilium CNI
     if enable_cilium:
         cluster_host = cluster_endpoint.apply(lambda ep: ep.replace("https://", ""))
@@ -483,7 +462,7 @@ users:
             version="1.18.3",
             namespace="kube-system",
             values=cilium_values,
-            skip_await=False,
+            skip_await=True,
             opts=pulumi.ResourceOptions(
                 provider=k8s_provider,
                 depends_on=[cluster, aws_auth_configmap],
@@ -512,215 +491,300 @@ users:
             version="1.45.0",
             namespace="kube-system",
             values=coredns_values,
-            skip_await=False,
+            skip_await=True,
             opts=pulumi.ResourceOptions(
                 provider=k8s_provider,
                 depends_on=deps,
-                ignore_changes=["values"],
+                # ignore_changes=["values"],
                 retain_on_delete=True,
             ),
         )
         
         result["coredns_release"] = coredns_release
+
+        coredns_service = k8s.core.v1.Service.get(
+            "coredns-service",
+            "kube-system/coredns",
+            opts=pulumi.ResourceOptions(
+                provider=k8s_provider,
+                depends_on=[coredns_release],
+            ),
+        )
+        result["coredns_service"] = coredns_service
+        result["coredns_cluster_ip"] = coredns_service.spec.apply(
+            lambda spec: spec.cluster_ip if spec else None
+        )
     
-    # Install Flux
-    if enable_flux:
-        flux_values = deepcopy(flux_base_values) if flux_base_values else deepcopy(_DEFAULT_FLUX_VALUES)
-        
-        deps = [cluster, aws_auth_configmap]
-        if "cilium_release" in result:
-            deps.append(result["cilium_release"])
-        if "coredns_release" in result:
-            deps.append(result["coredns_release"])
-        
-        flux_namespace = k8s.core.v1.Namespace(
-            "flux-system",
-            metadata={"name": "flux-system"},
-            opts=pulumi.ResourceOptions(
-                provider=k8s_provider,
-                depends_on=[cluster, aws_auth_configmap],
-                retain_on_delete=True,
-            ),
-        )
-        result["flux_namespace"] = flux_namespace
-        deps.append(flux_namespace)
+    return result
 
-        #pass the infra details to the flux configmap
-        infra_outputs_configmap = k8s.core.v1.ConfigMap(
-            "infra-outputs",
-            metadata=k8s.meta.v1.ObjectMetaArgs(
-                name="infra-outputs",
-                namespace="flux-system",
-            ),
-            
-            data={
-                "CLUSTER_NAME": cluster_name,
-                "CLUSTER_ENDPOINT": cluster_endpoint.apply(lambda ep: ep.replace("https://", "")),
-            },
-            opts=pulumi.ResourceOptions(
-                provider=k8s_provider,
-                depends_on=[flux_namespace],
-                ignore_changes=[
-                    "metadata.annotations",
-                    "metadata.labels",
-                    "metadata.generation",
-                    "metadata.resourceVersion",
-                ],
-                retain_on_delete=True,
-            ),
-        )
-        result["infra_outputs_configmap"] = infra_outputs_configmap
-        deps.append(infra_outputs_configmap)
 
-        flux_sops_secret = None
-        flux_git_secret = None
-        if flux_sops_secret_name:
-            sops_age_key_path = os.environ.get("SOPS_AGE_KEY_FILE")
-            if not sops_age_key_path:
+def bootstrap_flux(
+    cluster_name: str,
+    cluster_endpoint: pulumi.Output,
+    cluster_ca_certificate: pulumi.Output,
+    cluster: Any,
+    aws_auth_configmap: Any,
+    region: str,
+    enable_flux: bool,
+    *,
+    flux_values_path: Optional[str] = None,
+    flux_git_url: Optional[str] = None,
+    flux_git_branch: Optional[str] = None,
+    flux_git_path: Optional[str] = None,
+    flux_git_secret_name: Optional[str] = None,
+    flux_git_secret_values_path: Optional[str] = None,
+    flux_sops_secret_name: Optional[str] = None,
+    flux_git_interval: Optional[str] = None,
+    flux_kustomization_interval: Optional[str] = None,
+    additional_dependencies: Optional[List[pulumi.Resource]] = None,
+) -> Dict[str, Any]:
+    """
+    Bootstrap Flux components on the cluster.
+    """
+    if not enable_flux:
+        return {}
+
+    dependencies: List[pulumi.Resource] = [cluster, aws_auth_configmap]
+    if additional_dependencies:
+        dependencies.extend(additional_dependencies)
+
+    k8s_provider = k8s.Provider(
+        f"{cluster_name}-flux-k8s-provider",
+        kubeconfig=pulumi.Output.all(
+            cluster_endpoint,
+            cluster_ca_certificate,
+        ).apply(lambda args: f"""apiVersion: v1
+clusters:
+- cluster:
+    certificate-authority-data: {args[1]}
+    server: {args[0]}
+  name: {cluster_name}
+contexts:
+- context:
+    cluster: {cluster_name}
+    user: {cluster_name}
+  name: {cluster_name}
+current-context: {cluster_name}
+kind: Config
+preferences: {{}}
+users:
+- name: {cluster_name}
+  user:
+    exec:
+      apiVersion: client.authentication.k8s.io/v1beta1
+      command: aws
+      args:
+        - eks
+        - get-token
+        - --cluster-name
+        - {cluster_name}
+        - --region
+        - {region}
+"""),
+        opts=pulumi.ResourceOptions(depends_on=dependencies),
+    )
+
+    flux_base_values: Dict[str, Any] = {}
+    if flux_values_path:
+        flux_base_values = _load_yaml_mapping(flux_values_path, "Flux")
+    flux_values = deepcopy(flux_base_values) if flux_base_values else deepcopy(_DEFAULT_FLUX_VALUES)
+
+    result: Dict[str, Any] = {}
+
+    flux_namespace = k8s.core.v1.Namespace(
+        "flux-system",
+        metadata={"name": "flux-system"},
+        opts=pulumi.ResourceOptions(
+            provider=k8s_provider,
+            depends_on=dependencies,
+            retain_on_delete=True,
+        ),
+    )
+    result["flux_namespace"] = flux_namespace
+
+    cluster_host = cluster_endpoint.apply(lambda ep: ep.replace("https://", ""))
+    infra_outputs_configmap = k8s.core.v1.ConfigMap(
+        "infra-outputs",
+        metadata=k8s.meta.v1.ObjectMetaArgs(
+            name="infra-outputs",
+            namespace="flux-system",
+        ),
+        data={
+            "CLUSTER_NAME": cluster_name,
+            "CLUSTER_ENDPOINT": cluster_host,
+        },
+        opts=pulumi.ResourceOptions(
+            provider=k8s_provider,
+            depends_on=[flux_namespace],
+            ignore_changes=[
+                "metadata.annotations",
+                "metadata.labels",
+                "metadata.generation",
+                "metadata.resourceVersion",
+            ],
+            retain_on_delete=True,
+        ),
+    )
+    result["infra_outputs_configmap"] = infra_outputs_configmap
+
+    flux_sops_secret = None
+    if flux_sops_secret_name:
+        sops_age_key_path = os.environ.get("SOPS_AGE_KEY_FILE")
+        if not sops_age_key_path:
+            pulumi.log.warn(
+                "Environment variable SOPS_AGE_KEY_FILE is not set. Skipping creation of the Flux SOPS secret."
+            )
+        else:
+            try:
+                with open(sops_age_key_path, "r", encoding="utf-8") as age_key_file:
+                    sops_age_key_content = age_key_file.read()
+            except FileNotFoundError:
                 pulumi.log.warn(
-                    "Environment variable SOPS_AGE_KEY_FILE is not set. Skipping creation of the Flux SOPS secret."
+                    f"SOPS Age key file {sops_age_key_path} not found. Skipping creation of the Flux SOPS secret."
+                )
+            except Exception as exc:  # noqa: BLE001
+                pulumi.log.warn(
+                    f"Failed to read SOPS Age key file {sops_age_key_path}: {exc}. Skipping creation of the Flux SOPS secret."
                 )
             else:
-                try:
-                    with open(sops_age_key_path, "r", encoding="utf-8") as age_key_file:
-                        sops_age_key_content = age_key_file.read()
-                except FileNotFoundError:
-                    pulumi.log.warn(
-                        f"SOPS Age key file {sops_age_key_path} not found. Skipping creation of the Flux SOPS secret."
-                    )
-                except Exception as exc:  # noqa: BLE001
-                    pulumi.log.warn(
-                        f"Failed to read SOPS Age key file {sops_age_key_path}: {exc}. Skipping creation of the Flux SOPS secret."
-                    )
-                else:
-                    flux_sops_secret = k8s.core.v1.Secret(
-                        flux_sops_secret_name,
-                        metadata={"name": flux_sops_secret_name, "namespace": "flux-system"},
-                        string_data={"age.agekey": sops_age_key_content},
-                        type="Opaque",
-                        opts=pulumi.ResourceOptions(
-                            provider=k8s_provider,
-                            depends_on=[flux_namespace],
-                            retain_on_delete=True,
-                        ),
-                    )
-                    result["flux_sops_secret"] = flux_sops_secret
-                    deps.append(flux_sops_secret)
-        
-        if flux_git_secret_name and flux_git_secret_values_path:
-            secret_values = _decrypt_sops_mapping(
-                flux_git_secret_values_path,
-                "Flux Git secret",
-            )
-            if secret_values:
-                github_values = secret_values.get("github") or {}
-                username = github_values.get("username")
-                token = github_values.get("token")
+                flux_sops_secret = k8s.core.v1.Secret(
+                    flux_sops_secret_name,
+                    metadata={"name": flux_sops_secret_name, "namespace": "flux-system"},
+                    string_data={"age.agekey": sops_age_key_content},
+                    type="Opaque",
+                    opts=pulumi.ResourceOptions(
+                        provider=k8s_provider,
+                        depends_on=[flux_namespace],
+                        retain_on_delete=True,
+                    ),
+                )
+                result["flux_sops_secret"] = flux_sops_secret
 
-                if not username or not token:
-                    pulumi.log.warn(
-                        f"Flux Git secret values file {flux_git_secret_values_path} must contain both username and token."
-                    )
+    flux_git_secret = None
+    if flux_git_secret_name and flux_git_secret_values_path:
+        secret_values = _decrypt_sops_mapping(
+            flux_git_secret_values_path,
+            "Flux Git secret",
+        )
+        if secret_values:
+            github_values = secret_values.get("github") or {}
+            username = github_values.get("username")
+            token = github_values.get("token")
 
-                if github_values:
-                    string_data: Dict[str, pulumi.Input[str]] = {}
-                    string_data["username"] = username
-                    string_data["password"] = token
+            if not username or not token:
+                pulumi.log.warn(
+                    f"Flux Git secret values file {flux_git_secret_values_path} must contain both username and token."
+                )
 
-                    flux_git_secret = k8s.core.v1.Secret(
-                        flux_git_secret_name,
-                        metadata={"name": flux_git_secret_name, "namespace": "flux-system"},
-                        type="Opaque",
-                        opts=pulumi.ResourceOptions(
-                            provider=k8s_provider,
-                            depends_on=[flux_namespace],
-                            retain_on_delete=True,
-                        ),
-                        string_data=string_data,
-                    )
-                    result["flux_git_secret"] = flux_git_secret
-                    deps.append(flux_git_secret)
+            if github_values:
+                string_data: Dict[str, pulumi.Input[str]] = {
+                    "username": username,
+                    "password": token,
+                }
 
-        flux_release = k8s.helm.v3.Release(
-            "fluxcd",
-            name="fluxcd",
-            chart="flux2",
-            repository_opts=k8s.helm.v3.RepositoryOptsArgs(
-                repo="https://fluxcd-community.github.io/helm-charts",
-            ),
-            version="2.17.1",
-            namespace="flux-system",
-            values=flux_values,
-            skip_await=False,
+                flux_git_secret = k8s.core.v1.Secret(
+                    flux_git_secret_name,
+                    metadata={"name": flux_git_secret_name, "namespace": "flux-system"},
+                    type="Opaque",
+                    opts=pulumi.ResourceOptions(
+                        provider=k8s_provider,
+                        depends_on=[flux_namespace],
+                        retain_on_delete=True,
+                    ),
+                    string_data=string_data,
+                )
+                result["flux_git_secret"] = flux_git_secret
+
+    release_dependencies: List[pulumi.Resource] = [
+        flux_namespace,
+        infra_outputs_configmap,
+        *dependencies,
+    ]
+    if flux_sops_secret:
+        release_dependencies.append(flux_sops_secret)
+    if flux_git_secret:
+        release_dependencies.append(flux_git_secret)
+
+    flux_release = k8s.helm.v3.Release(
+        "fluxcd",
+        name="fluxcd",
+        chart="flux2",
+        repository_opts=k8s.helm.v3.RepositoryOptsArgs(
+            repo="https://fluxcd-community.github.io/helm-charts",
+        ),
+        version="2.17.1",
+        namespace="flux-system",
+        values=flux_values,
+        skip_await=True,
+        opts=pulumi.ResourceOptions(
+            provider=k8s_provider,
+            depends_on=release_dependencies,
+            ignore_changes=["values"],
+            retain_on_delete=True,
+        ),
+    )
+    result["flux_release"] = flux_release
+
+    if flux_git_url:
+        git_repo_spec: Dict[str, Any] = {
+            "interval": flux_git_interval or "1m0s",
+            "url": flux_git_url,
+        }
+        if flux_git_branch:
+            git_repo_spec["ref"] = {"branch": flux_git_branch}
+        if flux_git_secret_name:
+            git_repo_spec["secretRef"] = {"name": flux_git_secret_name}
+
+        git_repo_dependencies = release_dependencies + [flux_release]
+
+        flux_git_repository = k8s.apiextensions.CustomResource(
+            "flux-system-git-repository",
+            api_version="source.toolkit.fluxcd.io/v1",
+            kind="GitRepository",
+            metadata={"name": "flux-system", "namespace": "flux-system"},
+            spec=git_repo_spec,
             opts=pulumi.ResourceOptions(
                 provider=k8s_provider,
-                depends_on=deps,
-                ignore_changes=["values"],
+                depends_on=git_repo_dependencies,
                 retain_on_delete=True,
             ),
         )
-        
-        result["flux_release"] = flux_release
+        result["flux_git_repository"] = flux_git_repository
 
-        if flux_git_url:
-            git_repo_spec: Dict[str, Any] = {
-                "interval": flux_git_interval or "1m0s",
-                "url": flux_git_url,
+        kustomization_spec: Dict[str, Any] = {
+            "interval": flux_kustomization_interval or "10m0s",
+            "path": flux_git_path or "./",
+            "prune": True,
+            "sourceRef": {
+                "kind": "GitRepository",
+                "name": "flux-system",
+            },
+            "postBuild": {
+                "substituteFrom": [{
+                    "kind": "ConfigMap",
+                    "name": infra_outputs_configmap.metadata["name"],
+                }],
+            },
+        }
+        if flux_sops_secret_name:
+            kustomization_spec["decryption"] = {
+                "provider": "sops",
+                "secretRef": {"name": flux_sops_secret_name},
             }
-            if flux_git_branch:
-                git_repo_spec["ref"] = {"branch": flux_git_branch}
-            if flux_git_secret_name:
-                git_repo_spec["secretRef"] = {"name": flux_git_secret_name}
 
-            git_repo_depends = deps + [flux_release]
+        flux_kustomization = k8s.apiextensions.CustomResource(
+            "flux-system-kustomization",
+            api_version="kustomize.toolkit.fluxcd.io/v1",
+            kind="Kustomization",
+            metadata={"name": "flux-system", "namespace": "flux-system"},
+            spec=kustomization_spec,
+            opts=pulumi.ResourceOptions(
+                provider=k8s_provider,
+                depends_on=[flux_git_repository, flux_release],
+                retain_on_delete=True,
+            ),
+        )
+        result["flux_kustomization"] = flux_kustomization
 
-            flux_git_repository = k8s.apiextensions.CustomResource(
-                "flux-system-git-repository",
-                api_version="source.toolkit.fluxcd.io/v1",
-                kind="GitRepository",
-                metadata={"name": "flux-system", "namespace": "flux-system"},
-                spec=git_repo_spec,
-                opts=pulumi.ResourceOptions(
-                    provider=k8s_provider,
-                    depends_on=git_repo_depends,
-                    retain_on_delete=True,
-                ),
-            )
-            result["flux_git_repository"] = flux_git_repository
-
-            kustomization_spec: Dict[str, Any] = {
-                "interval": flux_kustomization_interval or "10m0s",
-                "path": flux_git_path or "./",
-                "prune": True,
-                "sourceRef": {
-                    "kind": "GitRepository",
-                    "name": "flux-system",
-                },
-                "postBuild": {
-                    "substituteFrom": [{
-                        "kind": "ConfigMap",
-                        "name": infra_outputs_configmap.metadata["name"],
-                    }],
-                },
-            }
-            if flux_sops_secret_name:
-                kustomization_spec["decryption"] = {
-                    "provider": "sops",
-                    "secretRef": {"name": flux_sops_secret_name},
-                }
-
-            flux_kustomization = k8s.apiextensions.CustomResource(
-                "flux-system-kustomization",
-                api_version="kustomize.toolkit.fluxcd.io/v1",
-                kind="Kustomization",
-                metadata={"name": "flux-system", "namespace": "flux-system"},
-                spec=kustomization_spec,
-                opts=pulumi.ResourceOptions(
-                    provider=k8s_provider,
-                    depends_on=[flux_git_repository, flux_release],
-                    retain_on_delete=True,
-                ),
-            )
-            result["flux_kustomization"] = flux_kustomization
     return result
 

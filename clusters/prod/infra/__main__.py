@@ -11,7 +11,7 @@ from pathlib import Path
 import pulumi
 import pulumi_aws as aws
 import pulumi_kubernetes as k8s
-from typing import List
+from typing import Any, Dict, List
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 CLUSTER_ROOT = Path(__file__).resolve().parents[1]
@@ -29,7 +29,7 @@ from networking.networking import create_networking
 from eks_cluster.cluster import create_eks_cluster
 from node_groups.node_groups import create_node_groups
 from eks_auth.auth import create_eks_auth
-from kubernetes_addons.addons import create_kubernetes_addons
+from kubernetes_addons.addons import create_kubernetes_addons, bootstrap_flux
 
 def main():
     """
@@ -97,22 +97,7 @@ def main():
     # Apply the security group rule
     cluster["cluster_security_group_id"].apply(update_worker_sg)
     
-    # 3. Create Node Groups
-    pulumi.log.info("Creating node groups...")
-    node_groups = create_node_groups(
-        cluster_name=config_data["cluster_name"],
-        node_groups=node_groups_config,
-        node_group_service_role_arn=cluster["node_group_service_role_arn"],
-        node_instance_profile_name=cluster["node_instance_profile_name"],
-        cluster_security_group_id=cluster["cluster_security_group_id"],
-        worker_node_security_group_id=networking["worker_node_security_group_id"],
-        private_subnet_ids=networking["private_subnet_ids"],
-        cluster_endpoint=cluster["cluster_endpoint"],
-        cluster_ca_data=cluster["cluster_certificate_authority_data"],
-        tags=tags,
-    )
-    
-    # 4. Configure EKS Authentication (aws-auth ConfigMap)
+    # 3. Configure EKS Authentication (aws-auth ConfigMap)
     pulumi.log.info("Configuring EKS authentication...")
     eks_auth = create_eks_auth(
         cluster_name=config_data["cluster_name"],
@@ -125,7 +110,7 @@ def main():
         additional_dependencies=cluster["cluster_admin_access_policy_associations"],
     )
     
-    # 5. Install Kubernetes Add-ons (Cilium CNI and CoreDNS)
+    # 4. Install Kubernetes Add-ons (Cilium CNI and CoreDNS)
     pulumi.log.info("Installing Kubernetes add-ons...")
     addons = create_kubernetes_addons(
         cluster_name=config_data["cluster_name"],
@@ -134,22 +119,58 @@ def main():
         pod_cidr_range=config_data["pod_cidr_range"],
         enable_cilium=config_data["enable_cilium"],
         enable_coredns=config_data["enable_coredns"],
-        enable_flux=config_data["enable_flux"],
         cluster=cluster["cluster"],
         aws_auth_configmap=eks_auth["aws_auth_configmap"],
         region=config_data["region"],
         cilium_values_path=str(CILIUM_VALUES_PATH),
         coredns_values_path=str(COREDNS_VALUES_PATH),
-        flux_values_path=str(FLUX_VALUES_PATH),
-        flux_git_url=config_data["flux_git_url"],
-        flux_git_branch=config_data["flux_git_branch"],
-        flux_git_path=config_data["flux_git_path"],
-        flux_git_secret_name=config_data["flux_git_secret_name"],
-        flux_git_secret_values_path=flux_git_secret_values_path,
-        flux_sops_secret_name=config_data["flux_sops_secret_name"],
-        flux_git_interval=config_data["flux_git_interval"],
-        flux_kustomization_interval=config_data["flux_kustomization_interval"],
     )
+    
+    # 5. Create Node Groups
+    pulumi.log.info("Creating node groups...")
+    node_groups = create_node_groups(
+        cluster_name=config_data["cluster_name"],
+        node_groups=node_groups_config,
+        node_group_service_role_arn=cluster["node_group_service_role_arn"],
+        node_instance_profile_name=cluster["node_instance_profile_name"],
+        cluster_security_group_id=cluster["cluster_security_group_id"],
+        worker_node_security_group_id=networking["worker_node_security_group_id"],
+        private_subnet_ids=networking["private_subnet_ids"],
+        cluster_endpoint=cluster["cluster_endpoint"],
+        cluster_ca_data=cluster["cluster_certificate_authority_data"],
+        tags=tags,
+        region=config_data["region"],
+        dns_cluster_ip=addons.get("coredns_cluster_ip"),
+    )
+
+    flux_resources: Dict[str, Any] = {}
+    if config_data["enable_flux"]:
+        flux_dependencies: List[pulumi.Resource] = []
+        for dependency_key in ("cilium_release", "coredns_release"):
+            dependency = addons.get(dependency_key)
+            if dependency:
+                flux_dependencies.append(dependency)
+        flux_dependencies.extend(node_groups["autoscaling_group_readiness"].values())
+
+        flux_resources = bootstrap_flux(
+            cluster_name=config_data["cluster_name"],
+            cluster_endpoint=cluster["cluster_endpoint"],
+            cluster_ca_certificate=cluster["cluster_certificate_authority_data"],
+            cluster=cluster["cluster"],
+            aws_auth_configmap=eks_auth["aws_auth_configmap"],
+            region=config_data["region"],
+            enable_flux=config_data["enable_flux"],
+            flux_values_path=str(FLUX_VALUES_PATH),
+            flux_git_url=config_data["flux_git_url"],
+            flux_git_branch=config_data["flux_git_branch"],
+            flux_git_path=config_data["flux_git_path"],
+            flux_git_secret_name=config_data["flux_git_secret_name"],
+            flux_git_secret_values_path=flux_git_secret_values_path,
+            flux_sops_secret_name=config_data["flux_sops_secret_name"],
+            flux_git_interval=config_data["flux_git_interval"],
+            flux_kustomization_interval=config_data["flux_kustomization_interval"],
+            additional_dependencies=flux_dependencies,
+        )
     
     # Export outputs
     pulumi.export("cluster_name", cluster["cluster"].name)
@@ -212,8 +233,8 @@ users:
         pulumi.export("cilium_release_name", addons["cilium_release"].name)
     if addons.get("coredns_release"):
         pulumi.export("coredns_release_name", addons["coredns_release"].name)
-    if addons.get("flux_release"):
-        pulumi.export("flux_release_name", addons["flux_release"].name)
+    if flux_resources.get("flux_release"):
+        pulumi.export("flux_release_name", flux_resources["flux_release"].name)
 
 # Run the main function
 main()
