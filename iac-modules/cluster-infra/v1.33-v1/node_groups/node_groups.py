@@ -11,68 +11,6 @@ import pulumi
 import pulumi_aws as aws
 
 
-def _wait_for_asg_ready(args: Tuple[str, str, int, int]) -> Dict[str, Any]:
-    asg_name, region, timeout_seconds, poll_interval_seconds = args
-
-    if pulumi.runtime.is_dry_run():
-        pulumi.log.info(
-            f"Preview: skipping Auto Scaling Group readiness check for {asg_name or '<unknown>'}."
-        )
-        return {
-            "asg_name": asg_name,
-            "desired_capacity": 0,
-            "healthy_instances": 0,
-        }
-
-    import boto3
-    from botocore.exceptions import ClientError  # type: ignore
-
-    client = boto3.client("autoscaling", region_name=region)
-    deadline = time.time() + timeout_seconds
-
-    while time.time() < deadline:
-        try:
-            response = client.describe_auto_scaling_groups(AutoScalingGroupNames=[asg_name])
-        except ClientError as exc:
-            pulumi.log.warn(f"Failed to describe Auto Scaling Group {asg_name}: {exc}")
-            time.sleep(poll_interval_seconds)
-            continue
-
-        groups = response.get("AutoScalingGroups") or []
-        if not groups:
-            pulumi.log.warn(f"Auto Scaling Group {asg_name} not found; retrying...")
-            time.sleep(poll_interval_seconds)
-            continue
-
-        group = groups[0]
-        desired_capacity = group.get("DesiredCapacity", 0)
-        instances = group.get("Instances") or []
-        pulumi.log.info(f"Auto Scaling Group {asg_name} has {desired_capacity} desired capacity and {len(instances)} instances.")
-        for instance in instances:
-            pulumi.log.info(f"Instance {instance.get('InstanceId')} is {instance.get('LifecycleState')} and {instance.get('HealthStatus')}.")
-        healthy_instances = sum(
-            1
-            for instance in instances
-            if instance.get("LifecycleState") == "InService" and instance.get("HealthStatus") == "Healthy"
-        )
-
-        if desired_capacity == 0 or healthy_instances >= desired_capacity:
-            pulumi.log.info(
-                f"Auto Scaling Group {asg_name} is healthy ({healthy_instances}/{desired_capacity} instances InService)."
-            )
-            return {
-                "asg_name": asg_name,
-                "desired_capacity": desired_capacity,
-                "healthy_instances": healthy_instances,
-            }
-        pulumi.log.info(f"Auto Scaling Group {asg_name} is not healthy ({healthy_instances}/{desired_capacity} instances InService). Retrying...")
-        time.sleep(poll_interval_seconds)
-
-    raise Exception(
-        f"Timed out after {timeout_seconds}s waiting for Auto Scaling Group {asg_name} to become healthy."
-    )
-
-
 class WaitForAsgReady(pulumi.ComponentResource):
     ready: pulumi.Output[bool]
 
@@ -89,7 +27,7 @@ class WaitForAsgReady(pulumi.ComponentResource):
 
         readiness_details = pulumi.Output.all(
             asg_name, region, timeout_seconds, poll_interval_seconds
-        ).apply(_wait_for_asg_ready)
+        ).apply(self._wait_for_asg_ready)
 
         self.ready = readiness_details.apply(lambda _: True)
         self.details = readiness_details
@@ -101,6 +39,66 @@ class WaitForAsgReady(pulumi.ComponentResource):
             }
         )
 
+    def _wait_for_asg_ready(self, args: Tuple[str, str, int, int]) -> Dict[str, Any]:
+        asg_name, region, timeout_seconds, poll_interval_seconds = args
+
+        if pulumi.runtime.is_dry_run():
+            pulumi.log.info(
+                f"Preview: skipping Auto Scaling Group readiness check for {asg_name or '<unknown>'}."
+            )
+            return {
+                "asg_name": asg_name,
+                "desired_capacity": 0,
+                "healthy_instances": 0,
+            }
+
+        import boto3
+        from botocore.exceptions import ClientError  # type: ignore
+
+        client = boto3.client("autoscaling", region_name=region)
+        deadline = time.time() + timeout_seconds
+
+        while time.time() < deadline:
+            try:
+                response = client.describe_auto_scaling_groups(AutoScalingGroupNames=[asg_name])
+            except ClientError as exc:
+                pulumi.log.warn(f"Failed to describe Auto Scaling Group {asg_name}: {exc}")
+                time.sleep(poll_interval_seconds)
+                continue
+
+            groups = response.get("AutoScalingGroups") or []
+            if not groups:
+                pulumi.log.warn(f"Auto Scaling Group {asg_name} not found; retrying...")
+                time.sleep(poll_interval_seconds)
+                continue
+
+            group = groups[0]
+            desired_capacity = group.get("DesiredCapacity", 0)
+            instances = group.get("Instances") or []
+            pulumi.log.info(f"Auto Scaling Group {asg_name} has {desired_capacity} desired capacity and {len(instances)} instances.")
+            for instance in instances:
+                pulumi.log.info(f"Instance {instance.get('InstanceId')} is {instance.get('LifecycleState')} and {instance.get('HealthStatus')}.")
+            healthy_instances = sum(
+                1
+                for instance in instances
+                if instance.get("LifecycleState") == "InService" and instance.get("HealthStatus") == "Healthy"
+            )
+
+            if desired_capacity == 0 or healthy_instances >= desired_capacity:
+                pulumi.log.info(
+                    f"Auto Scaling Group {asg_name} is healthy ({healthy_instances}/{desired_capacity} instances InService)."
+                )
+                return {
+                    "asg_name": asg_name,
+                    "desired_capacity": desired_capacity,
+                    "healthy_instances": healthy_instances,
+                }
+            pulumi.log.info(f"Auto Scaling Group {asg_name} is not healthy ({healthy_instances}/{desired_capacity} instances InService). Retrying...")
+            time.sleep(poll_interval_seconds)
+
+        raise Exception(
+            f"Timed out after {timeout_seconds}s waiting for Auto Scaling Group {asg_name} to become healthy."
+        )
 
 def create_node_groups(
     cluster_name: str,
@@ -186,11 +184,11 @@ def create_node_groups(
         taints = ng_config.get("taints", [])
         
         # Create user data script
-        def create_user_data(endpoint: str, ca_data: str, dns_ip: Optional[str]) -> str:
-            labels_str = ",".join([f"{k}={v}" for k, v in all_labels.items()])
+        def create_user_data(endpoint: str, ca_data: str, labels: Dict[str, str], taints_list: List[Dict[str, str]], dns_ip: Optional[str]) -> str:
+            labels_str = ",".join([f"{k}={v}" for k, v in labels.items()])
             taints_str = ",".join([
                 f"{t['key']}={t.get('value', '')}:{t['effect']}"
-                for t in taints
+                for t in taints_list
             ])
             
             kubelet_args = ""
@@ -212,12 +210,12 @@ def create_node_groups(
             return "\n".join(lines) + "\n"
         
         if dns_cluster_ip is not None:
-            user_data = pulumi.Output.all(cluster_endpoint, cluster_ca_data, dns_cluster_ip).apply(
-                lambda args: base64.b64encode(create_user_data(args[0], args[1], args[2]).encode()).decode()
+            user_data = pulumi.Output.all(cluster_endpoint, cluster_ca_data, all_labels, taints, dns_cluster_ip).apply(
+                lambda args: base64.b64encode(create_user_data(args[0], args[1], args[2], args[3], args[4]).encode()).decode()
             )
         else:
-            user_data = pulumi.Output.all(cluster_endpoint, cluster_ca_data).apply(
-                lambda args: base64.b64encode(create_user_data(args[0], args[1], None).encode()).decode()
+            user_data = pulumi.Output.all(cluster_endpoint, cluster_ca_data, all_labels, taints).apply(
+                lambda args: base64.b64encode(create_user_data(args[0], args[1], args[2], args[3], None).encode()).decode()
             )
         
         # Combine security groups
@@ -290,6 +288,12 @@ def create_node_groups(
             # For simplicity, using all subnets. In production, filter by AZ
             pass
         
+        refresh_triggers = [
+            trigger
+            for trigger in ng_config.get("refresh_triggers", [])
+            if trigger != "launch_template"
+        ]
+
         # Create Auto Scaling Group
         asg = aws.autoscaling.Group(
             f"{cluster_name}-{ng_name}-asg",
@@ -308,7 +312,7 @@ def create_node_groups(
                     min_healthy_percentage=ng_config.get("refresh_min_healthy_percent", 90),
                     skip_matching=ng_config.get("refresh_skip_matching", True),
                 ),
-                triggers=["launch_template"],
+                triggers=refresh_triggers or None,
             ),
             health_check_type="EC2",
             health_check_grace_period=300,
