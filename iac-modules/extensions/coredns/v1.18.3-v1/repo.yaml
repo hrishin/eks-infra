@@ -2,7 +2,7 @@ apiVersion: source.toolkit.fluxcd.io/v1
 kind: HelmRepository
 metadata:
   name: corends
-  namespace: corends
+  namespace: kube-system
 spec:
   interval: 20m
   url: https://coredns.github.io/helm/
