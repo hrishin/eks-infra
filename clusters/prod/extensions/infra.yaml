@@ -10,7 +10,7 @@ spec:
   sourceRef:
     kind: GitRepository
     name: flux-system
-  path: ./clusters/prod/infra/extensions/infra/
+  path: ./clusters/prod/extensions/infra/
   prune: true
   wait: true
   postBuild:
