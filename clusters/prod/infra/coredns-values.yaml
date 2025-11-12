@@ -4,7 +4,6 @@ image:
 replicaCount: 2
 service:
   type: ClusterIP
-  clusterIP: 172.20.0.10
 resources:
   limits:
     memory: 170Mi

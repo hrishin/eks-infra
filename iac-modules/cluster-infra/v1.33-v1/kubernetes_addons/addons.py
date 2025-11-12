@@ -105,8 +105,7 @@ _DEFAULT_COREDNS_VALUES: Dict[str, Any] = {
     },
     "replicaCount": 2,
     "service": {
-        "type": "ClusterIP",
-        "clusterIP": "172.20.0.10",
+        "type": "ClusterIP"
     },
     "resources": {
         "limits": {
@@ -553,9 +552,10 @@ users:
                 name="infra-outputs",
                 namespace="flux-system",
             ),
+            
             data={
                 "CLUSTER_NAME": cluster_name,
-                "CLUSTER_ENDPOINT": cluster_endpoint,
+                "CLUSTER_ENDPOINT": cluster_endpoint.apply(lambda ep: ep.replace("https://", "")),
             },
             opts=pulumi.ResourceOptions(
                 provider=k8s_provider,
