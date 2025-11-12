@@ -1,7 +1,7 @@
 node_groups:
   # Core compute nodes for general workloads
   core:
-    instance_types: ["t3.xlarge"]
+    instance_types: ["z1d.2xlarge"]
     desired_size: 2
     min_size: 2
     max_size: 4
@@ -10,32 +10,12 @@ node_groups:
     ami_type: "CUSTOM"
     labels:
       node-type: "core"
-      workload: "general"
+      workload: "system"
       environment: "production"
     taints:
       - key: "node-type"
         value: "core"
         effect: "NoSchedule"
-
-  # Dedicated compute nodes on single-tenant hardware
-  dedicated-compute:
-    instance_types: ["t3.xlarge"]
-    desired_size: 2
-    min_size: 0
-    max_size: 2
-    disk_size: 50
-    ami_id: "ami-060bb37b943ff8d8e"
-    ami_type: "CUSTOM"
-    tenancy: "dedicated"
-    labels:
-      node-type: "dedicated"
-      workload: "latency-sensitive"
-      environment: "production"
-    taints:
-      - key: "tenancy"
-        value: "dedicated"
-        effect: "NoSchedule"
-
 
   # # G4 instances - General purpose GPU instances with T4 (more widely available)
   # g4-training:

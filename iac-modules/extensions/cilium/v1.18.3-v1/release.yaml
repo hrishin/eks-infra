@@ -27,6 +27,10 @@ spec:
     enableIPv6Masquerade: true
     extraArgs:
       - --devices=ens+
+    eni:
+      enabled: true
+    routingMode: native
+
     hubble:
       enabled: true
       relay:
@@ -52,7 +56,7 @@ spec:
         securityGroupTags: {}
         subnetTags: {}
       mode: eni
-    k8sServiceHost: ""
+    k8sServiceHost: ${CLUSTER_ENDPOINT}
     k8sServicePort: 443
     kubeProxyReplacement: true
     loadBalancer:
@@ -74,6 +78,5 @@ spec:
           value: core
     prometheus:
       enabled: true
-    routingMode: native
 
 

@@ -623,7 +623,7 @@ users:
                     )
 
                 secret_args: Dict[str, Any] = {}
-                secret_args["string_data"] = {
+                secret_args["data"] = {
                     "username": username,
                     "token": token,
                 }
@@ -708,7 +708,6 @@ users:
                     "substituteFrom": [{
                         "kind": "ConfigMap",
                         "name": infra_outputs_configmap.metadata["name"],
-                        "namespace": "flux-system",
                     }],
                 },
             }

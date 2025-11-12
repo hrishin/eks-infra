@@ -90,3 +90,11 @@ helmController:
       effect: NoSchedule
   nodeSelector:
     node-type: core
+cli:
+  tolerations:
+    - key: node-type
+      operator: Equal
+      value: core
+      effect: NoSchedule
+  nodeSelector:
+    node-type: core

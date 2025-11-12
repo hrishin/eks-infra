@@ -75,6 +75,10 @@ def create_node_groups(
     autoscaling_groups = {}
     
     for ng_name, ng_config in node_groups.items():
+        pulumi.log.info("Creating node group infrastructure...")
+        pulumi.log.info(f"Node group name: {ng_name}")
+        pulumi.log.info(f"Node group config: {ng_config}")
+        
         # Process labels
         base_labels = ng_config.get("labels", {})
         gpu_labels = detect_gpu_type(ng_config.get("instance_types", ["t3.medium"]))
@@ -190,6 +194,14 @@ set -o xtrace
             launch_template=aws.autoscaling.GroupLaunchTemplateArgs(
                 id=lt.id,
                 version="$Latest",
+            ),
+            instance_refresh=aws.autoscaling.GroupInstanceRefreshArgs(
+                strategy="Rolling",
+                preferences=aws.autoscaling.GroupInstanceRefreshPreferencesArgs(
+                    min_healthy_percentage=ng_config.get("refresh_min_healthy_percent", 90),
+                    skip_matching=ng_config.get("refresh_skip_matching", True),
+                ),
+                triggers=["launch_template"],
             ),
             health_check_type="EC2",
             health_check_grace_period=300,

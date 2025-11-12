@@ -3,6 +3,8 @@ EKS Authentication configuration (aws-auth ConfigMap)
 Equivalent to terraform/modules/eks-auth
 """
 
+import base64
+
 import pulumi
 import pulumi_aws as aws
 import pulumi_kubernetes as k8s
@@ -34,28 +36,6 @@ def create_eks_auth(
     Returns:
         Dictionary containing auth resources
     """
-    
-    # Get cluster auth token
-    def get_auth_token(cluster_name_val):
-        import subprocess
-        import json
-        result = subprocess.run(
-            [
-                "aws",
-                "eks",
-                "get-token",
-                "--cluster-name",
-                cluster_name_val,
-                "--region",
-                region,
-            ],
-            capture_output=True,
-            text=True
-        )
-        if result.returncode == 0:
-            token_data = json.loads(result.stdout)
-            return token_data.get("status", {}).get("token", "")
-        return ""
     
     # Create Kubernetes provider
     k8s_provider = k8s.Provider(
