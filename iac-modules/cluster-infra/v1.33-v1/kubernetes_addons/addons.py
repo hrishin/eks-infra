@@ -546,6 +546,32 @@ users:
         result["flux_namespace"] = flux_namespace
         deps.append(flux_namespace)
 
+        #pass the infra details to the flux configmap
+        infra_outputs_configmap = k8s.core.v1.ConfigMap(
+            "infra-outputs",
+            metadata=k8s.meta.v1.ObjectMetaArgs(
+                name="infra-outputs",
+                namespace="flux-system",
+            ),
+            data={
+                "CLUSTER_NAME": cluster_name,
+                "CLUSTER_ENDPOINT": cluster_endpoint,
+            },
+            opts=pulumi.ResourceOptions(
+                provider=k8s_provider,
+                depends_on=[flux_namespace],
+                ignore_changes=[
+                    "metadata.annotations",
+                    "metadata.labels",
+                    "metadata.generation",
+                    "metadata.resourceVersion",
+                ],
+                retain_on_delete=True,
+            ),
+        )
+        result["infra_outputs_configmap"] = infra_outputs_configmap
+        deps.append(infra_outputs_configmap)
+
         flux_sops_secret = None
         flux_git_secret = None
         if flux_sops_secret_name:
@@ -677,6 +703,13 @@ users:
                 "sourceRef": {
                     "kind": "GitRepository",
                     "name": "flux-system",
+                },
+                "postBuild": {
+                    "substituteFrom": [{
+                        "kind": "ConfigMap",
+                        "name": infra_outputs_configmap.metadata["name"],
+                        "namespace": "flux-system",
+                    }],
                 },
             }
             if flux_sops_secret_name:

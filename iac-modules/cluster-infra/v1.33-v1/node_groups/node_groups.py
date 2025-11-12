@@ -140,6 +140,9 @@ set -o xtrace
                 http_tokens="required",
                 http_put_response_hop_limit=2,
             ),
+            placement=aws.ec2.LaunchTemplatePlacementArgs(
+                tenancy=ng_config.get("tenancy")
+            ) if ng_config.get("tenancy") else None,
             user_data=user_data,
             tag_specifications=[
                 aws.ec2.LaunchTemplateTagSpecificationArgs(
