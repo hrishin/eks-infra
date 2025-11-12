@@ -20,7 +20,7 @@ spec:
       datapathMode: netkit
       masquerade: true
     cluster:
-      name: ""
+      name: "${CLUSTER_NAME}"
     devices:
       - eth0
     enableIPv4Masquerade: true
