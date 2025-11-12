@@ -510,7 +510,7 @@ users:
             repository_opts=k8s.helm.v3.RepositoryOptsArgs(
                 repo="https://coredns.github.io/helm/",
             ),
-            version="1.25.0",
+            version="1.45.0",
             namespace="kube-system",
             values=coredns_values,
             skip_await=False,
