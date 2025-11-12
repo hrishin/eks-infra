@@ -7,7 +7,7 @@ spec:
   releaseName: corends
   chart:
     spec:
-      chart: corends
+      chart: coredns
       version: "1.25.0" 
       sourceRef:
         kind: HelmRepository
