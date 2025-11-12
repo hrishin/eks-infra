@@ -14,6 +14,16 @@ import pulumi_aws as aws
 def _wait_for_asg_ready(args: Tuple[str, str, int, int]) -> Dict[str, Any]:
     asg_name, region, timeout_seconds, poll_interval_seconds = args
 
+    if pulumi.runtime.is_dry_run():
+        pulumi.log.info(
+            f"Preview: skipping Auto Scaling Group readiness check for {asg_name or '<unknown>'}."
+        )
+        return {
+            "asg_name": asg_name,
+            "desired_capacity": 0,
+            "healthy_instances": 0,
+        }
+
     import boto3
     from botocore.exceptions import ClientError  # type: ignore
 
@@ -37,10 +47,13 @@ def _wait_for_asg_ready(args: Tuple[str, str, int, int]) -> Dict[str, Any]:
         group = groups[0]
         desired_capacity = group.get("DesiredCapacity", 0)
         instances = group.get("Instances") or []
+        pulumi.log.info(f"Auto Scaling Group {asg_name} has {desired_capacity} desired capacity and {len(instances)} instances.")
+        for instance in instances:
+            pulumi.log.info(f"Instance {instance.get('InstanceId')} is {instance.get('LifecycleState')} and {instance.get('HealthStatus')}.")
         healthy_instances = sum(
             1
             for instance in instances
-            if instance.get("LifecycleState") == "InService" and instance.get("HealthStatus") == "HEALTHY"
+            if instance.get("LifecycleState") == "InService" and instance.get("HealthStatus") == "Healthy"
         )
 
         if desired_capacity == 0 or healthy_instances >= desired_capacity:
@@ -52,7 +65,7 @@ def _wait_for_asg_ready(args: Tuple[str, str, int, int]) -> Dict[str, Any]:
                 "desired_capacity": desired_capacity,
                 "healthy_instances": healthy_instances,
             }
-
+        pulumi.log.info(f"Auto Scaling Group {asg_name} is not healthy ({healthy_instances}/{desired_capacity} instances InService). Retrying...")
         time.sleep(poll_interval_seconds)
 
     raise Exception(
