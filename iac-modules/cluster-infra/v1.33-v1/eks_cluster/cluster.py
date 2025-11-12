@@ -276,6 +276,7 @@ def create_eks_cluster(
     )
     
     # Create EKS Access Entry for cluster admins
+    admin_access_policy_associations = []
     for i, admin_arn in enumerate(cluster_admin_user_arns):
         access_entry = aws.eks.AccessEntry(
             f"{cluster_name}-admin-{i}",
@@ -286,7 +287,7 @@ def create_eks_cluster(
         )
         
         # Associate admin policy
-        aws.eks.AccessPolicyAssociation(
+        admin_policy_association = aws.eks.AccessPolicyAssociation(
             f"{cluster_name}-admin-policy-{i}",
             cluster_name=cluster.name,
             principal_arn=admin_arn,
@@ -296,6 +297,7 @@ def create_eks_cluster(
             ),
             opts=pulumi.ResourceOptions(depends_on=[access_entry]),
         )
+        admin_access_policy_associations.append(admin_policy_association)
     
     # Create EKS Access Entry for node role
     node_access_entry = aws.eks.AccessEntry(
@@ -316,5 +318,6 @@ def create_eks_cluster(
         "node_group_service_role_arn": node_role.arn,
         "node_instance_profile_name": node_instance_profile.name,
         "cluster_service_role_arn": cluster_role.arn,
+        "cluster_admin_access_policy_associations": admin_access_policy_associations,
     }
 

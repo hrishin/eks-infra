@@ -122,6 +122,7 @@ def main():
         cluster_admin_user_arns=config_data["cluster_admin_user_arns"],
         cluster=cluster["cluster"],
         region=config_data["region"],
+        additional_dependencies=cluster["cluster_admin_access_policy_associations"],
     )
     
     # 5. Install Kubernetes Add-ons (Cilium CNI and CoreDNS)

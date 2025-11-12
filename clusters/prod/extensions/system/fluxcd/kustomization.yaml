@@ -3,7 +3,7 @@ kind: Kustomization
 namespace: kube-system
 resources:
   - ../../../../../iac-modules/extensions/namespace/v1/
-  - ../../../../../iac-modules/extensions/flux-instance/v0.33.0/
+  - ../../../../../iac-modules/extensions/fluxcd/v2.17.1/
 # patches:
 #   - path: values.yaml
 #     target:

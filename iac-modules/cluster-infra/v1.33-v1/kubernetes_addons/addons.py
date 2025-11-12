@@ -613,7 +613,7 @@ users:
                 "Flux Git secret",
             )
             if secret_values:
-                github_values = secret_values.get("github")
+                github_values = secret_values.get("github") or {}
                 username = github_values.get("username")
                 token = github_values.get("token")
 
@@ -622,32 +622,24 @@ users:
                         f"Flux Git secret values file {flux_git_secret_values_path} must contain both username and token."
                     )
 
-                secret_args: Dict[str, Any] = {}
-                secret_args["data"] = {
-                    "username": username,
-                    "token": token,
-                }
-                if secret_args:
+                if github_values:
+                    string_data: Dict[str, pulumi.Input[str]] = {}
+                    string_data["username"] = username
+                    string_data["password"] = token
+
                     flux_git_secret = k8s.core.v1.Secret(
                         flux_git_secret_name,
                         metadata={"name": flux_git_secret_name, "namespace": "flux-system"},
+                        type="Opaque",
                         opts=pulumi.ResourceOptions(
                             provider=k8s_provider,
                             depends_on=[flux_namespace],
                             retain_on_delete=True,
                         ),
-                        **secret_args,
+                        string_data=string_data,
                     )
                     result["flux_git_secret"] = flux_git_secret
                     deps.append(flux_git_secret)
-                else:
-                    pulumi.log.warn(
-                        f"Flux Git secret values from {flux_git_secret_values_path} could not be converted into Kubernetes Secret data."
-                    )
-        elif flux_git_secret_name and not flux_git_secret_values_path:
-            pulumi.log.warn(
-                "Flux Git secret name provided but no encrypted values path supplied; skipping secret creation."
-            )
 
         flux_release = k8s.helm.v3.Release(
             "fluxcd",
@@ -656,7 +648,7 @@ users:
             repository_opts=k8s.helm.v3.RepositoryOptsArgs(
                 repo="https://fluxcd-community.github.io/helm-charts",
             ),
-            version="2.7.0",
+            version="2.17.1",
             namespace="flux-system",
             values=flux_values,
             skip_await=False,
@@ -684,7 +676,7 @@ users:
 
             flux_git_repository = k8s.apiextensions.CustomResource(
                 "flux-system-git-repository",
-                api_version="source.toolkit.fluxcd.io/v1beta2",
+                api_version="source.toolkit.fluxcd.io/v1",
                 kind="GitRepository",
                 metadata={"name": "flux-system", "namespace": "flux-system"},
                 spec=git_repo_spec,
@@ -719,7 +711,7 @@ users:
 
             flux_kustomization = k8s.apiextensions.CustomResource(
                 "flux-system-kustomization",
-                api_version="kustomize.toolkit.fluxcd.io/v1beta2",
+                api_version="kustomize.toolkit.fluxcd.io/v1",
                 kind="Kustomization",
                 metadata={"name": "flux-system", "namespace": "flux-system"},
                 spec=kustomization_spec,

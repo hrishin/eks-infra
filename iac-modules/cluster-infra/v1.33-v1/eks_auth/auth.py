@@ -8,7 +8,7 @@ import base64
 import pulumi
 import pulumi_aws as aws
 import pulumi_kubernetes as k8s
-from typing import List, Any
+from typing import List, Any, Optional
 import yaml as yaml_lib
 
 
@@ -20,6 +20,7 @@ def create_eks_auth(
     cluster_admin_user_arns: List[str],
     cluster: Any,
     region: str,
+    additional_dependencies: Optional[List[pulumi.Resource]] = None,
 ) -> dict:
     """
     Create aws-auth ConfigMap for EKS cluster authentication
@@ -32,6 +33,7 @@ def create_eks_auth(
         cluster_admin_user_arns: List of IAM user ARNs for cluster admins
         cluster: EKS cluster resource (for dependency)
         region: AWS region where the cluster lives
+        additional_dependencies: Optional list of resources the ConfigMap should depend on
         
     Returns:
         Dictionary containing auth resources
@@ -101,6 +103,10 @@ users:
     aws_auth_data = node_role_arn.apply(create_aws_auth_data)
     
     # Create aws-auth ConfigMap
+    configmap_depends_on = [cluster]
+    if additional_dependencies:
+        configmap_depends_on.extend(additional_dependencies)
+
     aws_auth_configmap = k8s.core.v1.ConfigMap(
         "aws-auth",
         metadata=k8s.meta.v1.ObjectMetaArgs(
@@ -110,7 +116,7 @@ users:
         data=aws_auth_data,
         opts=pulumi.ResourceOptions(
             provider=k8s_provider,
-            depends_on=[cluster],
+            depends_on=configmap_depends_on,
         ),
     )
     
