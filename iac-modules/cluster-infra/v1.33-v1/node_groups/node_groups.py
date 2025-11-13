@@ -11,6 +11,8 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import pulumi
 import pulumi_aws as aws
+from botocore.credentials import Credentials
+from botocore.model import ServiceId
 from botocore.signers import RequestSigner
 
 
@@ -143,15 +145,12 @@ class WaitForAsgReady(pulumi.ComponentResource):
                             poll_interval_seconds=poll_interval_seconds,
                         )
                     except Exception as exc:  # noqa: BLE001
-                        pulumi.log.warn(
+                        pulumi.log.error(
                             f"Kubernetes readiness check for node group {node_group_label} failed: {exc}"
                         )
-                        kubernetes_details = {
-                            "node_group": node_group_label,
-                            "ready_nodes": 0,
-                            "expected_ready_nodes": desired_capacity,
-                            "status": "failed",
-                        }
+                        raise Exception(
+                            f"Kubernetes readiness check for node group {node_group_label} failed"
+                        ) from exc
                 else:
                     if desired_capacity == 0:
                         pulumi.log.info(
@@ -236,13 +235,24 @@ class WaitForAsgReady(pulumi.ComponentResource):
 
                 items = response.items or []
                 ready_nodes = 0
+
                 for node in items:
-                    conditions = node.get("status", {}).get("conditions", [])
+                    if isinstance(node, dict):
+                        node_status = node.get("status", {})
+                        conditions = node_status.get("conditions", []) or []
+                    else:
+                        node_status = getattr(node, "status", None)
+                        conditions = getattr(node_status, "conditions", []) or []
+
                     for condition in conditions:
-                        if (
-                            condition.get("type") == "Ready"
-                            and condition.get("status") == "True"
-                        ):
+                        if isinstance(condition, dict):
+                            condition_type = condition.get("type")
+                            condition_status = condition.get("status")
+                        else:
+                            condition_type = getattr(condition, "type", None)
+                            condition_status = getattr(condition, "status", None)
+
+                        if condition_type == "Ready" and condition_status == "True":
                             ready_nodes += 1
                             break
 
@@ -288,13 +298,19 @@ class WaitForAsgReady(pulumi.ComponentResource):
         if credentials is None:
             raise Exception("Unable to find AWS credentials for Kubernetes readiness check.")
 
-        frozen_credentials = credentials.get_frozen_credentials()
+        if not hasattr(credentials, "get_frozen_credentials"):
+            credentials = Credentials(
+                access_key=credentials.access_key,
+                secret_key=credentials.secret_key,
+                token=getattr(credentials, "token", None),
+                account_id=getattr(credentials, "account_id", None),
+            )
         signer = RequestSigner(
-            service_id="sts",
+            service_id=ServiceId("sts"),
             region_name=region,
             signing_name="sts",
             signature_version="v4",
-            credentials=frozen_credentials,
+            credentials=credentials,
             event_emitter=session.get_component("event_emitter"),
         )
 
@@ -404,7 +420,9 @@ def create_node_groups(
         # Process labels
         base_labels = ng_config.get("labels", {})
         gpu_labels = detect_gpu_type(ng_config.get("instance_types", ["t3.medium"]))
-        all_labels = {**base_labels, **gpu_labels}
+        # Ensure each node registers with a NodeGroup label so readiness checks can find it.
+        system_labels = {"NodeGroup": ng_name}
+        all_labels = {**system_labels, **base_labels, **gpu_labels}
         
         # Process taints
         taints = ng_config.get("taints", [])
