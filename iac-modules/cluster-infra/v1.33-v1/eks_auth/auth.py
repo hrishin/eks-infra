@@ -3,12 +3,12 @@ EKS Authentication configuration (aws-auth ConfigMap)
 Equivalent to terraform/modules/eks-auth
 """
 
-import base64
-import time
+import hashlib
+import json
 
 import pulumi
-import pulumi_aws as aws
 import pulumi_kubernetes as k8s
+import pulumiverse_time as time
 from typing import List, Any, Optional
 import yaml as yaml_lib
 
@@ -108,6 +108,19 @@ users:
     if additional_dependencies:
         configmap_depends_on.extend(additional_dependencies)
 
+    aws_auth_state_hash = aws_auth_data.apply(
+        lambda data: hashlib.sha256(json.dumps(data, sort_keys=True).encode("utf-8")).hexdigest()
+    )
+
+    sleep_before_auth = time.Sleep(
+        f"{cluster_name}-aws-auth-sleep",
+        create_duration="30s",
+        triggers=aws_auth_state_hash.apply(lambda digest: {"state_hash": digest}),
+        opts=pulumi.ResourceOptions(depends_on=list(configmap_depends_on)),
+    )
+    configmap_depends_on.append(sleep_before_auth)
+
+    
     aws_auth_configmap = k8s.core.v1.ConfigMap(
         "aws-auth",
         metadata=k8s.meta.v1.ObjectMetaArgs(
@@ -122,6 +135,7 @@ users:
     )
     
     return {
+        # "sleep_before_auth": sleep_before_auth,
         "aws_auth_configmap": aws_auth_configmap,
         "k8s_provider": k8s_provider,
     }

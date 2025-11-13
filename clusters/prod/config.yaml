@@ -2,6 +2,7 @@ node_groups:
   # Core compute nodes for general workloads
   core:
     instance_types: ["z1d.2xlarge"]
+    await: true
     desired_size: 2
     min_size: 2
     max_size: 4
