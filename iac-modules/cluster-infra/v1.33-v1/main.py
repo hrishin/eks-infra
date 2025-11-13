@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 import pulumi
 import pulumi_aws as aws
@@ -14,6 +14,22 @@ from node_groups.node_groups import create_node_groups, await_node_groups_ready
 from shared.config import get_pulumi_config, load_node_groups_config
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
+
+
+class NodeGroupReadinessBarrier(pulumi.ComponentResource):
+    ready: pulumi.Output[bool]
+
+    def __init__(
+        self,
+        name: str,
+        ready_output: pulumi.Input[bool],
+        opts: Optional[pulumi.ResourceOptions] = None,
+    ) -> None:
+        super().__init__("custom:nodegroup:ReadinessBarrier", name, None, opts)
+
+        self.ready = pulumi.Output.from_input(ready_output)
+
+        self.register_outputs({"ready": self.ready})
 
 
 def main(
@@ -140,9 +156,14 @@ def main(
     )
 
     pulumi.log.info("Waiting for node groups to become ready...")
-    await_node_groups_ready(
+    ng_await = await_node_groups_ready(
         node_groups_config=node_groups_config,
         readiness_checks=node_groups["autoscaling_group_readiness"],
+    )
+
+    ng_readiness_barrier = NodeGroupReadinessBarrier(
+        f"{config_data['cluster_name']}-node-group-readiness",
+        ng_await,
     )
 
     flux_resources: Dict[str, Any] = {}
@@ -153,6 +174,7 @@ def main(
             if dependency:
                 flux_dependencies.append(dependency)
         flux_dependencies.extend(node_groups["autoscaling_group_readiness"].values())
+        flux_dependencies.append(ng_readiness_barrier)
 
         flux_resources = bootstrap_flux(
             cluster_name=config_data["cluster_name"],

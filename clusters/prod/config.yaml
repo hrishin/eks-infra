@@ -1,11 +1,11 @@
 node_groups:
   # Core compute nodes for general workloads
   core:
-    instance_types: ["z1d.2xlarge"]
+    instance_types: ["t2.medium"]
     await: true
-    desired_size: 2
-    min_size: 2
-    max_size: 4
+    desired_size: 1
+    min_size: 1
+    max_size: 2
     disk_size: 20
     ami_id: "ami-060bb37b943ff8d8e"
     ami_type: "CUSTOM"
