@@ -536,6 +536,7 @@ def bootstrap_flux(
     flux_sops_secret_name: Optional[str] = None,
     flux_git_interval: Optional[str] = None,
     flux_kustomization_interval: Optional[str] = None,
+    aws_lbc_role_arn: Optional[pulumi.Output] = None,
     additional_dependencies: Optional[List[pulumi.Resource]] = None,
 ) -> Dict[str, Any]:
     """
@@ -612,6 +613,7 @@ users:
         data={
             "CLUSTER_NAME": cluster_name,
             "CLUSTER_ENDPOINT": cluster_host,
+            "AWS_LBC_ROLE_ARN": aws_lbc_role_arn or "",
         },
         opts=pulumi.ResourceOptions(
             provider=k8s_provider,

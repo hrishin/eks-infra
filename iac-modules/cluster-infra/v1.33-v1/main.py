@@ -11,6 +11,7 @@ from eks_cluster.cluster import create_eks_cluster
 from kubernetes_addons.addons import create_kubernetes_addons, bootstrap_flux
 from networking.networking import create_networking
 from node_groups.node_groups import create_node_groups, await_node_groups_ready
+from iam.irsa import create_aws_lbc_irsa
 from shared.config import get_pulumi_config, load_node_groups_config
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -138,6 +139,15 @@ def main(
         coredns_values_path=str(coredns_values_path),
     )
 
+    # 4.5. Create AWS Load Balancer Controller IRSA
+    pulumi.log.info("Creating AWS Load Balancer Controller IRSA...")
+    aws_lbc_irsa = create_aws_lbc_irsa(
+        cluster_name=config_data["cluster_name"],
+        oidc_issuer_url=cluster["cluster_oidc_issuer_url"],
+        oidc_provider_arn=cluster["cluster_oidc_provider_arn"],
+        tags=tags,
+    )
+
     # 5. Create Node Groups
     pulumi.log.info("Creating node groups...")
     node_groups = create_node_groups(
@@ -193,6 +203,7 @@ def main(
             flux_sops_secret_name=config_data["flux_sops_secret_name"],
             flux_git_interval=config_data["flux_git_interval"],
             flux_kustomization_interval=config_data["flux_kustomization_interval"],
+            aws_lbc_role_arn=aws_lbc_irsa["role_arn"],
             additional_dependencies=flux_dependencies,
         )
 
