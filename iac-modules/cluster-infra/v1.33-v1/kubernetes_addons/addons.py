@@ -680,8 +680,8 @@ users:
 
             if github_values:
                 string_data: Dict[str, pulumi.Input[str]] = {
-                    "username": username,
-                    "password": token,
+                    "username": username.strip() if isinstance(username, str) else username,
+                    "password": token.strip() if isinstance(token, str) else token,
                 }
 
                 flux_git_secret = k8s.core.v1.Secret(
