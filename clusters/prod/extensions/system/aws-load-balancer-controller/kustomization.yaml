@@ -3,7 +3,7 @@ kind: Kustomization
 namespace: aws-load-balancer-controller
 resources:
   - ../../../../../iac-modules/extensions/namespace/v1/
-  - ../../../../../iac-modules/extensions/fluxcd/v2.17.1/
+  - ../../../../../iac-modules/extensions/aws-load-balancer-controller/v1.8.2-v1/
 # patches:
 #   - path: values.yaml
 #     target:
