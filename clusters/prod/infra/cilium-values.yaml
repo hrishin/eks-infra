@@ -12,6 +12,7 @@ extraArgs:
   - --devices=enX0+
 eni:
   enabled: true
+  awsEnablePrefixDelegation: true
 routingMode: native
 
 hubble:
