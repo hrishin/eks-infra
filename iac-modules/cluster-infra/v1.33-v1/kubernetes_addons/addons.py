@@ -22,10 +22,10 @@ _DEFAULT_CILIUM_VALUES_BASE: Dict[str, Any] = {
     "cluster": {
         "name": "",
     },
-    "devices": ["eth0"],
+    "devices": ["enX0"],
     "enableIPv4Masquerade": True,
     "enableIPv6Masquerade": True,
-    "extraArgs": ["--devices=ens+"],
+    "extraArgs": ["--devices=enX0+"],
     "hubble": {
         "enabled": True,
         "relay": {

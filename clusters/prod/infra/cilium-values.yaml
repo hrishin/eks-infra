@@ -5,11 +5,11 @@ bpf:
 cluster:
   name: ""
 devices:
-  - eth0
+  - enX0
 enableIPv4Masquerade: true
 enableIPv6Masquerade: true
 extraArgs:
-  - --devices=ens+
+  - --devices=enX0+
 eni:
   enabled: true
 routingMode: native
