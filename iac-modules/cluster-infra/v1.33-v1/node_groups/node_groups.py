@@ -9,6 +9,12 @@ import tempfile
 import time
 from typing import Any, Dict, List, Optional, Tuple
 
+import boto3
+from botocore.exceptions import ClientError  # type: ignore
+
+from kubernetes import client as k8s_client  # type: ignore
+from kubernetes.client import rest as k8s_rest  # type: ignore
+
 import pulumi
 import pulumi_aws as aws
 from botocore.credentials import Credentials
@@ -24,7 +30,7 @@ class WaitForAsgReady(pulumi.ComponentResource):
         name: str,
         asg_name: pulumi.Input[str],
         region: pulumi.Input[str],
-        timeout_seconds: int = 900,
+        timeout_seconds: int = 600,
         poll_interval_seconds: int = 15,
         cluster_name: Optional[pulumi.Input[str]] = None,
         cluster_endpoint: Optional[pulumi.Input[str]] = None,
@@ -89,9 +95,6 @@ class WaitForAsgReady(pulumi.ComponentResource):
                 "healthy_instances": 0,
             }
 
-        import boto3
-        from botocore.exceptions import ClientError  # type: ignore
-
         client = boto3.client("autoscaling", region_name=region)
         deadline = time.time() + timeout_seconds
 
@@ -141,7 +144,7 @@ class WaitForAsgReady(pulumi.ComponentResource):
                             node_group_label=node_group_label,
                             desired_capacity=desired_capacity,
                             region=region,
-                            timeout_seconds=timeout_seconds,
+                            timeout_seconds=max(int(deadline - time.time()), 60),
                             poll_interval_seconds=poll_interval_seconds,
                         )
                     except Exception as exc:  # noqa: BLE001
@@ -185,21 +188,12 @@ class WaitForAsgReady(pulumi.ComponentResource):
         timeout_seconds: int,
         poll_interval_seconds: int,
     ) -> Dict[str, Any]:
-        kubernetes_timeout = min(timeout_seconds, 300)
+        kubernetes_timeout = timeout_seconds
         deadline = time.time() + kubernetes_timeout
 
         ca_file_path = self._write_ca_file(cluster_ca_data)
         try:
             last_error: Optional[str] = None
-
-            try:
-                from kubernetes import client as k8s_client  # type: ignore
-                from kubernetes.client import rest as k8s_rest  # type: ignore
-            except ImportError as exc:
-                raise Exception(
-                    "The kubernetes Python client is required for readiness checks. "
-                    "Install it by running `pip install kubernetes`."
-                ) from exc
 
             while time.time() < deadline:
                 token = self._generate_bearer_token(cluster_name, region)
@@ -341,6 +335,7 @@ class WaitForAsgReady(pulumi.ComponentResource):
         if not session.get_config_variable("region"):
             session.set_config_variable("region", region)
         return session
+
 
 def create_node_groups(
     cluster_name: str,
@@ -590,10 +585,10 @@ def create_node_groups(
         
         autoscaling_groups[ng_name] = asg
 
-        readiness_timeout = ng_config.get("readiness_timeout_seconds", 900)
+        readiness_timeout = ng_config.get("readiness_timeout_seconds", 600)
         readiness_poll_interval = ng_config.get("readiness_poll_interval_seconds", 15)
 
-        if ng_config.get("await", False):
+        if ng_config.get("await", True):
             asg_ready = WaitForAsgReady(
                 f"{cluster_name}-{ng_name}-asg-ready",
                 asg_name=asg.name,
@@ -636,7 +631,7 @@ def await_node_groups_ready(
     """
 
     awaited_groups = [
-        name for name, config in node_groups_config.items() if config.get("await", False)
+        name for name, config in node_groups_config.items() if config.get("await", True)
     ]
 
     if not awaited_groups:
