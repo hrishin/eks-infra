@@ -12,7 +12,6 @@ spec:
       sourceRef:
         kind: HelmRepository
         name: aws-load-balancer-controller
-        namespace: kube-system
   interval: 2m
   values:
     clusterName: "${CLUSTER_NAME}"
