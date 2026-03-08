@@ -15,6 +15,13 @@ spec:
   interval: 2m
   values:
     clusterName: "${CLUSTER_NAME}"
+    tolerations:
+      - key: node-type
+        operator: Equal
+        value: core
+        effect: NoSchedule
+    nodeSelector:
+      node-type: core
     serviceAccount:
       create: true
       name: aws-load-balancer-controller
