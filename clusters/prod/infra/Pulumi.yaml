@@ -15,8 +15,8 @@ config:
     description: CIDR block for VPC
     default: "10.0.0.0/16"
   eks-pulumi:pod_cidr_range:
-    description: CIDR range for pods
-    default: "10.0.0.0/16"
+    description: CIDR range for pods (must not overlap with vpc_cidr)
+    default: "192.168.0.0/16"
   eks-pulumi:availability_zones:
     description: List of availability zones (comma-separated)
     default: "eu-west-2a,eu-west-2c"

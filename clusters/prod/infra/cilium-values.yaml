@@ -4,15 +4,12 @@ bpf:
   masquerade: true
 cluster:
   name: ""
-devices:
-  - enX0
 enableIPv4Masquerade: true
 enableIPv6Masquerade: true
-extraArgs:
-  - --devices=enX0+
-eni:
-  enabled: true
-  awsEnablePrefixDelegation: true
+# --- ENI IPAM mode (commented out) ---
+# eni:
+#   enabled: true
+#   awsEnablePrefixDelegation: true
 routingMode: native
 
 hubble:
@@ -34,12 +31,21 @@ hubble:
 image:
   repository: quay.io/cilium/cilium
   tag: v1.16.4
+# --- ENI IPAM configuration (commented out) ---
+# ipam:
+#   eni:
+#     enabled: true
+#     securityGroupTags: {}
+#     subnetTags: {}
+#   mode: eni
+
+# --- Cluster Scope IPAM mode ---
 ipam:
-  eni:
-    enabled: true
-    securityGroupTags: {}
-    subnetTags: {}
-  mode: eni
+  mode: cluster-pool
+  operator:
+    clusterPoolIPv4PodCIDRList:
+      - 192.168.0.0/16
+    clusterPoolIPv4MaskSize: 24
 k8sServiceHost: ""
 k8sServicePort: 443
 kubeProxyReplacement: true

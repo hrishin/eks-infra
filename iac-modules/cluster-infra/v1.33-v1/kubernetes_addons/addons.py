@@ -22,10 +22,8 @@ _DEFAULT_CILIUM_VALUES_BASE: Dict[str, Any] = {
     "cluster": {
         "name": "",
     },
-    "devices": ["enX0"],
     "enableIPv4Masquerade": True,
     "enableIPv6Masquerade": True,
-    "extraArgs": ["--devices=enX0+"],
     "hubble": {
         "enabled": True,
         "relay": {
@@ -55,13 +53,22 @@ _DEFAULT_CILIUM_VALUES_BASE: Dict[str, Any] = {
         "repository": "quay.io/cilium/cilium",
         "tag": "v1.16.4",
     },
+    # --- ENI IPAM configuration (commented out) ---
+    # "ipam": {
+    #     "eni": {
+    #         "enabled": True,
+    #         "securityGroupTags": {},
+    #         "subnetTags": {},
+    #     },
+    #     "mode": "eni",
+    # },
+    # --- Cluster Scope IPAM mode ---
     "ipam": {
-        "eni": {
-            "enabled": True,
-            "securityGroupTags": {},
-            "subnetTags": {},
+        "mode": "cluster-pool",
+        "operator": {
+            "clusterPoolIPv4PodCIDRList": ["192.168.0.0/16"],
+            "clusterPoolIPv4MaskSize": 24,
         },
-        "mode": "eni",
     },
     "k8sServiceHost": "",
     "k8sServicePort": 443,
@@ -438,15 +445,19 @@ users:
 
             values = deepcopy(cilium_values_base) if cilium_values_base else deepcopy(_DEFAULT_CILIUM_VALUES_BASE)
 
-            cluster_tag_value = {f"kubernetes.io/cluster/{cluster_name_value}": "owned"}
+            # --- ENI tag injection (commented out) ---
+            # cluster_tag_value = {f"kubernetes.io/cluster/{cluster_name_value}": "owned"}
+            # _set_nested_value(values, ["ipam", "eni", "subnetTags"], cluster_tag_value)
+            # _set_nested_value(values, ["ipam", "eni", "securityGroupTags"], cluster_tag_value)
+            # _set_nested_value(values, ["eni", "subnetTags"], cluster_tag_value)
+            # _set_nested_value(values, ["eni", "securityGroupTags"], cluster_tag_value)
 
             _set_nested_value(values, ["ipv4NativeRoutingCIDR"], pod_cidr_value)
             _set_nested_value(values, ["k8sServiceHost"], cluster_host_value)
             _set_nested_value(values, ["cluster", "name"], cluster_name_value)
-            _set_nested_value(values, ["ipam", "eni", "subnetTags"], cluster_tag_value)
-            _set_nested_value(values, ["ipam", "eni", "securityGroupTags"], cluster_tag_value)
-            _set_nested_value(values, ["eni", "subnetTags"], cluster_tag_value)
-            _set_nested_value(values, ["eni", "securityGroupTags"], cluster_tag_value)
+
+            # Cluster Scope IPAM: set pod CIDR from config
+            _set_nested_value(values, ["ipam", "operator", "clusterPoolIPv4PodCIDRList"], [pod_cidr_value])
 
             return values
 

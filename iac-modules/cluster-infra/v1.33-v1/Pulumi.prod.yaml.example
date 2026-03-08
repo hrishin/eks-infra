@@ -13,7 +13,7 @@ config:
   
   # Networking Configuration
   eks-pulumi:vpc_cidr: 10.0.0.0/16
-  eks-pulumi:pod_cidr_range: 10.0.0.0/16
+  eks-pulumi:pod_cidr_range: 192.168.0.0/16
   eks-pulumi:availability_zones: eu-west-2a,eu-west-2c
   
   # Admin Access

@@ -30,7 +30,7 @@ def get_pulumi_config() -> Dict[str, Any]:
     
     # Get networking configuration
     vpc_cidr = config.get("vpc_cidr") or "10.0.0.0/16"
-    pod_cidr_range = config.get("pod_cidr_range") or "10.0.0.0/16"
+    pod_cidr_range = config.get("pod_cidr_range") or "192.168.0.0/16"
     
     # Get availability zones (comma-separated string)
     az_string = config.get("availability_zones") or "eu-west-2a,eu-west-2c"
