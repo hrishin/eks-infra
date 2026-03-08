@@ -10,6 +10,7 @@ enableIPv6Masquerade: true
 # eni:
 #   enabled: true
 #   awsEnablePrefixDelegation: true
+ipv4NativeRoutingCIDR: 192.168.0.0/16
 routingMode: native
 
 hubble:
