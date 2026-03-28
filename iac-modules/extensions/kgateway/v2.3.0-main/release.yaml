@@ -1,0 +1,25 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: kgateway
+  namespace: kgateway-system
+spec:
+  releaseName: kgateway
+  chart:
+    spec:
+      chart: kgateway
+      version: "v2.3.0-main"
+      sourceRef:
+        kind: HelmRepository
+        name: kgateway
+  interval: 2m
+  dependsOn:
+    - name: kgateway-crds
+  values:
+    tolerations:
+      - key: node-type
+        operator: Equal
+        value: core
+        effect: NoSchedule
+    nodeSelector:
+      node-type: core

@@ -3,7 +3,7 @@ kind: Kustomization
 namespace: flux-system
 resources:
   - ../../../../../iac-modules/extensions/namespace/v1/
-  - ../../../../../iac-modules/extensions/fluxcd/v2.17.1/
+  - ../../../../../iac-modules/extensions/fluxcd/v2.17.1-v1/
 # patches:
 #   - path: values.yaml
 #     target:
