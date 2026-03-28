@@ -207,6 +207,22 @@ def main(
             additional_dependencies=flux_dependencies,
         )
 
+    # Attach ASGs to NLB Target Groups
+    for ng_name, asg_name in node_groups["autoscaling_group_names"].items():
+        if "target_group_arn_80" in networking:
+            aws.autoscaling.Attachment(
+                f"{config_data['cluster_name']}-{ng_name}-asg-attach-80",
+                autoscaling_group_name=asg_name,
+                lb_target_group_arn=networking["target_group_arn_80"],
+            )
+        
+        if "target_group_arn_443" in networking:
+            aws.autoscaling.Attachment(
+                f"{config_data['cluster_name']}-{ng_name}-asg-attach-443",
+                autoscaling_group_name=asg_name,
+                lb_target_group_arn=networking["target_group_arn_443"],
+            )
+
     # Export outputs
     pulumi.export("cluster_name", cluster["cluster"].name)
     pulumi.export("cluster_endpoint", cluster["cluster_endpoint"])
@@ -223,6 +239,11 @@ def main(
     pulumi.export("autoscaling_group_names", node_groups["autoscaling_group_names"])
     pulumi.export("launch_template_ids", node_groups["launch_template_ids"])
 
+    if "nlb_arn" in networking:
+        pulumi.export("nlb_arn", networking["nlb_arn"])
+        pulumi.export("nlb_dns_name", networking["nlb_dns_name"])
+        pulumi.export("target_group_arn_80", networking["target_group_arn_80"])
+        pulumi.export("target_group_arn_443", networking["target_group_arn_443"])
     # Export kubeconfig
     def create_kubeconfig(endpoint, ca_data, cluster_name):
         return pulumi.Output.all(endpoint, ca_data, cluster_name).apply(

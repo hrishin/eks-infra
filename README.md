@@ -2,8 +2,8 @@
 
 This repository contains a Pulumi program and supporting configuration for provisioning and managing an Amazon EKS cluster along with common add-ons.
 
-## Infrastructure is provisions
-- netowrking stack - VP to subnets
+## Infrastructure Provisions
+- Netowrking stack - VP to subnets
 - EKS cluster and node groups
 - Bootstraps the flux for the gitops as put the cluster configuration `clusters/prod/extensions`
 
@@ -17,7 +17,7 @@ This repository contains a Pulumi program and supporting configuration for provi
 3. Deploy the cluster `pulumi -C clusters/prod/infra up`
 
 ### Repository Layout
-- `clusters/`: Environment-specific cluster definitions and Pulumi stacks.
+- `clusters/`: Environment-specific cluster definitions.
 - `iac-modules/`: Reusable Pulumi components for cluster infrastructure and extensions.
 - `config/`: Encrypted configuration values for supported environments.
 

@@ -202,6 +202,141 @@ def create_networking(
         },
     )
     
+    # --- Pre-provisioned NLB for Ingress ---
+
+    # Create NLB Security Group
+    nlb_sg = aws.ec2.SecurityGroup(
+        f"{cluster_name}-nlb-sg",
+        name_prefix=f"{cluster_name}-nlb-",
+        description="Security group for shared cluster NLB",
+        vpc_id=vpc.id,
+        ingress=[
+            # HTTP
+            aws.ec2.SecurityGroupIngressArgs(
+                description="HTTP access",
+                from_port=80,
+                to_port=80,
+                protocol="tcp",
+                cidr_blocks=["0.0.0.0/0"],
+            ),
+            # HTTPS
+            aws.ec2.SecurityGroupIngressArgs(
+                description="HTTPS access",
+                from_port=443,
+                to_port=443,
+                protocol="tcp",
+                cidr_blocks=["0.0.0.0/0"],
+            ),
+        ],
+        egress=[
+            aws.ec2.SecurityGroupEgressArgs(
+                description="All outbound traffic",
+                from_port=0,
+                to_port=0,
+                protocol="-1",
+                cidr_blocks=["0.0.0.0/0"],
+            ),
+        ],
+        tags={
+            **tags,
+            "Name": f"{cluster_name}-nlb-sg",
+        },
+    )
+
+    # Allow NLB to communicate with worker nodes (required for Target Group routing)
+    aws.ec2.SecurityGroupRule(
+        f"{cluster_name}-nlb-to-workers",
+        type="ingress",
+        from_port=0,
+        to_port=65535,
+        protocol="tcp",
+        source_security_group_id=nlb_sg.id,
+        security_group_id=worker_sg.id,
+        description="Allow NLB to access worker pods/nodeports",
+    )
+
+    nlb = aws.lb.LoadBalancer(
+        f"{cluster_name}-nlb",
+        internal=False,
+        load_balancer_type="network",
+        security_groups=[nlb_sg.id],
+        subnets=[s.id for s in public_subnets],
+        enable_deletion_protection=False,
+        tags={
+            **tags,
+            "Name": f"{cluster_name}-nlb",
+        },
+    )
+
+    # Port 80 Target Group
+    target_group_80 = aws.lb.TargetGroup(
+        f"{cluster_name}-tg-80",
+        port=80,
+        protocol="TCP",
+        target_type="instance", # Routes traffic to EC2 nodes
+        vpc_id=vpc.id,
+        health_check=aws.lb.TargetGroupHealthCheckArgs(
+            protocol="TCP",
+            port="80",
+            healthy_threshold=2,
+            unhealthy_threshold=2,
+            timeout=3,
+            interval=10,
+        ),
+        tags={
+            **tags,
+            "Name": f"{cluster_name}-tg-80",
+        },
+    )
+
+    # Port 443 Target Group
+    target_group_443 = aws.lb.TargetGroup(
+        f"{cluster_name}-tg-443",
+        port=443,
+        protocol="TCP",
+        target_type="instance", # Routes traffic to EC2 nodes
+        vpc_id=vpc.id,
+        health_check=aws.lb.TargetGroupHealthCheckArgs(
+            protocol="TCP",
+            port="443",
+            healthy_threshold=2,
+            unhealthy_threshold=2,
+            timeout=3,
+            interval=10,
+        ),
+        tags={
+            **tags,
+            "Name": f"{cluster_name}-tg-443",
+        },
+    )
+
+    # Create TCP Listeners forwarding to Target Groups
+    tcp_listener_80 = aws.lb.Listener(
+        f"{cluster_name}-listener-80",
+        load_balancer_arn=nlb.arn,
+        port=80,
+        protocol="TCP",
+        default_actions=[
+            aws.lb.ListenerDefaultActionArgs(
+                type="forward",
+                target_group_arn=target_group_80.arn,
+            )
+        ],
+    )
+
+    tcp_listener_443 = aws.lb.Listener(
+        f"{cluster_name}-listener-443",
+        load_balancer_arn=nlb.arn,
+        port=443,
+        protocol="TCP",
+        default_actions=[
+            aws.lb.ListenerDefaultActionArgs(
+                type="forward",
+                target_group_arn=target_group_443.arn,
+            )
+        ],
+    )
+
     return {
         "vpc_id": vpc.id,
         "vpc_cidr_block": vpc.cidr_block,
@@ -210,5 +345,9 @@ def create_networking(
         "internet_gateway_id": igw.id,
         "nat_gateway_ids": [ng.id for ng in nat_gateways],
         "worker_node_security_group_id": worker_sg.id,
+        "nlb_arn": nlb.arn,
+        "nlb_dns_name": nlb.dns_name,
+        "target_group_arn_80": target_group_80.arn,
+        "target_group_arn_443": target_group_443.arn,
     }
 
