@@ -5,3 +5,4 @@ resources:
   - repo.yaml
   - release-crds.yaml
   - release.yaml
+  - crs/
