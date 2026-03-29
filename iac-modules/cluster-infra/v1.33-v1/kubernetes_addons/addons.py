@@ -300,6 +300,10 @@ def _load_yaml_mapping(file_path: str, component_name: str) -> Dict[str, Any]:
         )
         return {}
 
+    # Support reading values directly from a HelmRelease resource
+    if data.get("kind") == "HelmRelease" and "spec" in data:
+        return data["spec"].get("values", {})
+
     return data
 
 

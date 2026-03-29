@@ -14,9 +14,9 @@ CLUSTER_INFRA_DIR = Path(__file__).resolve().parent
 CLUSTER_ROOT = CLUSTER_INFRA_DIR.parent
 MODULE_ROOT = REPO_ROOT / "iac-modules" / "cluster-infra" / "v1.33-v1"
 NODE_GROUPS_CONFIG_PATH = CLUSTER_ROOT / "config.yaml"
-CILIUM_VALUES_PATH = CLUSTER_INFRA_DIR / "cilium-values.yaml"
-COREDNS_VALUES_PATH = CLUSTER_INFRA_DIR / "coredns-values.yaml"
-FLUX_VALUES_PATH = CLUSTER_INFRA_DIR / "flux-values.yaml"
+CILIUM_VALUES_PATH = REPO_ROOT / "iac-modules" / "extensions" / "cilium" / "current" / "release.yaml"
+COREDNS_VALUES_PATH = REPO_ROOT / "iac-modules" / "extensions" / "coredns" / "current" / "release.yaml"
+FLUX_VALUES_PATH = REPO_ROOT / "iac-modules" / "extensions" / "fluxcd" / "current" / "release.yaml"
 
 if (module_root_str := str(MODULE_ROOT)) not in sys.path:
     sys.path.insert(0, module_root_str)

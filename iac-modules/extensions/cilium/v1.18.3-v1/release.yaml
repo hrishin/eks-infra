@@ -64,7 +64,7 @@ spec:
         clusterPoolIPv4PodCIDRList:
           - 192.168.0.0/16
         clusterPoolIPv4MaskSize: 24
-    k8sServiceHost: ${CLUSTER_ENDPOINT}
+    k8sServiceHost: "${CLUSTER_ENDPOINT}"
     k8sServicePort: 443
     kubeProxyReplacement: true
     loadBalancer:
@@ -86,5 +86,3 @@ spec:
           value: core
     prometheus:
       enabled: true
-
-
