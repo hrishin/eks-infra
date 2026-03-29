@@ -1,0 +1,51 @@
+apiVersion: gateway.kgateway.dev/v1alpha1
+kind: GatewayParameters
+metadata:
+  name: hostnetwork-gw-params
+  namespace: kgateway-system
+spec:
+  kube:
+    service:
+      type: ClusterIP
+    deployment:
+      replicas: 3
+    deploymentOverlay:
+      spec:
+        template:
+          spec:
+            hostNetwork: true
+            dnsPolicy: ClusterFirstWithHostNet
+            nodeSelector:
+              node-type: core
+            tolerations:
+              - key: node-type
+                operator: Equal
+                value: core
+                effect: NoSchedule
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: GatewayClass
+metadata:
+  name: kgateway-hostnetwork
+spec:
+  controllerName: kgateway.dev/kgateway
+  parametersRef:
+    group: gateway.kgateway.dev
+    kind: GatewayParameters
+    name: hostnetwork-gw-params
+    namespace: kgateway-system
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: main-gateway
+  namespace: kgateway-system
+spec:
+  gatewayClassName: kgateway-hostnetwork
+  listeners:
+  - name: http
+    protocol: HTTP
+    port: 80
+  - name: https
+    protocol: HTTPS
+    port: 443
