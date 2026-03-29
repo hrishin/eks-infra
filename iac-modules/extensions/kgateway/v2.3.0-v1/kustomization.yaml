@@ -5,4 +5,4 @@ resources:
   - repo.yaml
   - release-crds.yaml
   - release.yaml
-  - hostnetwork-crs.yaml
+  - hostnetwork-gw.yaml
