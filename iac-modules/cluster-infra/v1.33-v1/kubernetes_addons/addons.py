@@ -517,9 +517,12 @@ users:
         
         result["coredns_release"] = coredns_release
 
+        # Use an output from the release to defer the .get lookup during preview
+        service_id = coredns_release.status.apply(lambda _: "kube-system/coredns")
+        
         coredns_service = k8s.core.v1.Service.get(
             "coredns-service",
-            "kube-system/coredns",
+            service_id,
             opts=pulumi.ResourceOptions(
                 provider=k8s_provider,
                 depends_on=[coredns_release],
