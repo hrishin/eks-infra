@@ -14,6 +14,8 @@ spec:
         template:
           spec:
             hostNetwork: true
+            securityContext:
+              sysctls: []
             dnsPolicy: ClusterFirstWithHostNet
             nodeSelector:
               node-type: core
@@ -45,7 +47,7 @@ spec:
   listeners:
   - name: http
     protocol: HTTP
-    port: 80
+    port: 8080
   - name: https
     protocol: HTTPS
-    port: 443
+    port: 30443
