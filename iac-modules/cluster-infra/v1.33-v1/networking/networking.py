@@ -271,13 +271,13 @@ def create_networking(
     # Port 80 Target Group
     target_group_80 = aws.lb.TargetGroup(
         f"{cluster_name}-tg-80",
-        port=80,
+        port=3080,
         protocol="TCP",
         target_type="instance", # Routes traffic to EC2 nodes
         vpc_id=vpc.id,
         health_check=aws.lb.TargetGroupHealthCheckArgs(
             protocol="TCP",
-            port="80",
+            port="3080",
             healthy_threshold=2,
             unhealthy_threshold=2,
             timeout=3,
@@ -292,13 +292,13 @@ def create_networking(
     # Port 443 Target Group
     target_group_443 = aws.lb.TargetGroup(
         f"{cluster_name}-tg-443",
-        port=443,
+        port=30443,
         protocol="TCP",
         target_type="instance", # Routes traffic to EC2 nodes
         vpc_id=vpc.id,
         health_check=aws.lb.TargetGroupHealthCheckArgs(
             protocol="TCP",
-            port="443",
+            port="30443",
             healthy_threshold=2,
             unhealthy_threshold=2,
             timeout=3,
@@ -314,7 +314,7 @@ def create_networking(
     tcp_listener_80 = aws.lb.Listener(
         f"{cluster_name}-listener-80",
         load_balancer_arn=nlb.arn,
-        port=80,
+        port=3080,
         protocol="TCP",
         default_actions=[
             aws.lb.ListenerDefaultActionArgs(
@@ -327,7 +327,7 @@ def create_networking(
     tcp_listener_443 = aws.lb.Listener(
         f"{cluster_name}-listener-443",
         load_balancer_arn=nlb.arn,
-        port=443,
+        port=30443,
         protocol="TCP",
         default_actions=[
             aws.lb.ListenerDefaultActionArgs(
