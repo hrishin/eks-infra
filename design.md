@@ -3,6 +3,63 @@
 
 ---
 
+```
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: my-ingress
+  namespace: default
+  annotations:
+    # ── Attach to existing ALB ──────────────────────────────────────
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/load-balancer-name: my-existing-alb
+
+    # ── Reuse existing listener ─────────────────────────────────────
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS": 443}]'
+
+    # ── Target type ─────────────────────────────────────────────────
+    alb.ingress.kubernetes.io/target-type: instance   # or ip
+
+    # ── Listener rule priority (avoid clashing with existing rules) ─
+    alb.ingress.kubernetes.io/rule-priority: "10"
+
+    # ── Health check ────────────────────────────────────────────────
+    alb.ingress.kubernetes.io/healthcheck-path: /health
+    alb.ingress.kubernetes.io/healthcheck-interval-seconds: "15"
+    alb.ingress.kubernetes.io/success-codes: "200"
+
+    # ── OPTION A: Forward to LBC-managed TG (LBC creates TG) ────────
+    # Nothing extra needed — LBC creates TG automatically from spec below
+
+    # ── OPTION B: Forward to pre-existing Terraform TG ──────────────
+    # Uncomment below and use use-annotation backend in spec
+    # alb.ingress.kubernetes.io/actions.forward-existing-tg: >
+    #   {"type":"forward","targetGroupARN":"arn:aws:elasticloadbalancing:eu-west-2:ACCOUNT:targetgroup/my-tg/XXXXX"}
+
+spec:
+  rules:
+    - http:
+        paths:
+
+          # ── OPTION A: LBC manages TG, path → K8s service ──────────
+          - path: /api/*
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: my-service
+                port:
+                  number: 8080
+
+          # ── OPTION B: Forward to pre-existing TG ──────────────────
+          # - path: /legacy/*
+          #   pathType: ImplementationSpecific
+          #   backend:
+          #     service:
+          #       name: forward-existing-tg   # must match action name above
+          #       port:
+          #         name: use-annotation
+```
+
 ## Part 0 — Requirements Discovery
 
 > Before committing to any architecture, these questions must be answered. Every answer changes the design materially.
