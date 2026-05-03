@@ -211,7 +211,6 @@ def create_networking(
         description="Security group for shared cluster NLB",
         vpc_id=vpc.id,
         ingress=[
-            # HTTP
             aws.ec2.SecurityGroupIngressArgs(
                 description="HTTP access",
                 from_port=80,
@@ -219,7 +218,6 @@ def create_networking(
                 protocol="tcp",
                 cidr_blocks=["0.0.0.0/0"],
             ),
-            # HTTPS
             aws.ec2.SecurityGroupIngressArgs(
                 description="HTTPS access",
                 from_port=443,
@@ -227,13 +225,27 @@ def create_networking(
                 protocol="tcp",
                 cidr_blocks=["0.0.0.0/0"],
             ),
+            aws.ec2.SecurityGroupIngressArgs(
+                description="HTTP node port",
+                from_port=3080,
+                to_port=3080,
+                protocol="tcp",
+                cidr_blocks=["0.0.0.0/0"],
+            ),
         ],
         egress=[
             aws.ec2.SecurityGroupEgressArgs(
-                description="All outbound traffic",
-                from_port=0,
-                to_port=0,
-                protocol="-1",
+                description="Forward to gateway HTTP node port",
+                from_port=3080,
+                to_port=3080,
+                protocol="tcp",
+                cidr_blocks=["0.0.0.0/0"],
+            ),
+            aws.ec2.SecurityGroupEgressArgs(
+                description="Forward to gateway HTTPS node port",
+                from_port=30443,
+                to_port=30443,
+                protocol="tcp",
                 cidr_blocks=["0.0.0.0/0"],
             ),
         ],
@@ -327,7 +339,7 @@ def create_networking(
     tcp_listener_443 = aws.lb.Listener(
         f"{cluster_name}-listener-443",
         load_balancer_arn=nlb.arn,
-        port=30443,
+        port=443,
         protocol="TCP",
         default_actions=[
             aws.lb.ListenerDefaultActionArgs(
