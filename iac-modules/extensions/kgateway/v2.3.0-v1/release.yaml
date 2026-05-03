@@ -21,5 +21,8 @@ spec:
         operator: Equal
         value: core
         effect: NoSchedule
+      - key: node.cilium.io/agent-not-ready
+        operator: Exists
+        effect: NoSchedule
     nodeSelector:
       node-type: core
