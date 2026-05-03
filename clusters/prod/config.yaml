@@ -7,6 +7,7 @@ node_groups:
     min_size: 1
     max_size: 2
     disk_size: 20
+    max_pods: 110
     ami_id: "ami-060bb37b943ff8d8e"
     ami_type: "CUSTOM"
     labels:

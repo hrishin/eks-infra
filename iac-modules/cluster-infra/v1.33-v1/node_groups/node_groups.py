@@ -423,25 +423,30 @@ def create_node_groups(
         taints = ng_config.get("taints", [])
         
         # Create user data script
+        max_pods = ng_config.get("max_pods")
+
         def create_user_data(endpoint: str, ca_data: str, labels: Dict[str, str], taints_list: List[Dict[str, str]], dns_ip: Optional[str]) -> str:
             labels_str = ",".join([f"{k}={v}" for k, v in labels.items()])
             taints_str = ",".join([
                 f"{t['key']}={t.get('value', '')}:{t['effect']}"
                 for t in taints_list
             ])
-            
+
             kubelet_args = ""
             if labels_str:
                 kubelet_args += f" --node-labels={labels_str}"
             if taints_str:
                 kubelet_args += f" --register-with-taints={taints_str}"
-            
+            if max_pods is not None:
+                kubelet_args += f" --max-pods={max_pods}"
+
             lines = [
                 "#!/bin/bash",
                 "set -o xtrace",
                 f"/etc/eks/bootstrap.sh {cluster_name} \\",
                 f"  --apiserver-endpoint '{endpoint}' \\",
                 f"  --b64-cluster-ca '{ca_data}' \\",
+                f"  --use-max-pods false \\",
             ]
             if dns_ip:
                 lines.append(f"  --dns-cluster-ip '{dns_ip}' \\")
