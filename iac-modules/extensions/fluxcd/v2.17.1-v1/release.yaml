@@ -32,9 +32,9 @@ spec:
     sourceController:
       resources:
         limits:
-          memory: 170Mi
+          memory: 512Mi
         requests:
-          memory: 170Mi
+          memory: 512Mi
       tolerations:
         - key: node-type
           operator: Equal
