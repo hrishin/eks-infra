@@ -47,13 +47,7 @@ spec:
             operator: Equal
             value: core
     tolerations:
-      - effect: NoSchedule
-        key: node-type
-        operator: Equal
-        value: core
-      - effect: NoSchedule
-        key: node.cilium.io/agent-not-ready
-        operator: Exists
+      - operator: Exists
     image:
       repository: quay.io/cilium/cilium
       tag: v1.16.4
