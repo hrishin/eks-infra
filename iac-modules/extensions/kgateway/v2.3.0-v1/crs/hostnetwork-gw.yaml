@@ -58,3 +58,8 @@ spec:
   - name: https
     protocol: HTTPS
     port: 30443
+    tls:
+      mode: Terminate
+      certificateRefs:
+        - name: main-gateway-tls
+          namespace: kgateway-system

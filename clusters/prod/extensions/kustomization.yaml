@@ -4,3 +4,4 @@ resources:
   - infra.yaml
   - system.yaml
   - kgateway-crs.yaml
+  - cert-manager-crs.yaml
