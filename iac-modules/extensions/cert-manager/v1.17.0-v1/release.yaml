@@ -26,6 +26,8 @@ spec:
         operator: Exists
         effect: NoSchedule
     webhook:
+      hostNetwork: true
+      securePort: 10260
       tolerations:
         - key: node-type
           operator: Equal
