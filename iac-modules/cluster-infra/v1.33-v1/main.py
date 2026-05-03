@@ -6,7 +6,9 @@ from typing import Any, Dict, List, Optional
 import pulumi
 import pulumi_aws as aws
 
-from eks_auth.auth import create_eks_auth
+# NOTE: eks_auth module kept but no longer called — auth is handled via
+# EKS Access Entries (API mode) in create_eks_cluster().
+# from eks_auth.auth import create_eks_auth
 from eks_cluster.cluster import create_eks_cluster
 from kubernetes_addons.addons import create_kubernetes_addons, bootstrap_flux
 from networking.networking import create_networking
@@ -108,20 +110,16 @@ def main(
             )
 
     # Apply the security group rule
+    pulumi.log.info("Allowing traffic from clster SG to wokers SG...")
     cluster["cluster_security_group_id"].apply(update_worker_sg)
 
-    # 3. Configure EKS Authentication (aws-auth ConfigMap)
-    pulumi.log.info("Configuring EKS authentication...")
-    eks_auth = create_eks_auth(
-        cluster_name=config_data["cluster_name"],
-        cluster_endpoint=cluster["cluster_endpoint"],
-        cluster_ca_certificate=cluster["cluster_certificate_authority_data"],
-        node_role_arn=cluster["node_group_service_role_arn"],
-        cluster_admin_user_arns=config_data["cluster_admin_user_arns"],
-        cluster=cluster["cluster"],
-        region=config_data["region"],
-        additional_dependencies=cluster["cluster_admin_access_policy_associations"],
-    )
+    # 3. Build auth dependencies from EKS Access Entries (API-only mode)
+    # The aws-auth ConfigMap is no longer needed — access is managed via
+    # Access Entries created in create_eks_cluster().
+    auth_dependencies = [
+        *cluster["cluster_admin_access_policy_associations"],
+        cluster["node_access_entry"],
+    ]
 
     # 4. Install Kubernetes Add-ons (Cilium CNI and CoreDNS)
     pulumi.log.info("Installing Kubernetes add-ons...")
@@ -133,7 +131,7 @@ def main(
         enable_cilium=config_data["enable_cilium"],
         enable_coredns=config_data["enable_coredns"],
         cluster=cluster["cluster"],
-        aws_auth_configmap=eks_auth["aws_auth_configmap"],
+        auth_dependencies=auth_dependencies,
         region=config_data["region"],
         cilium_values_path=str(cilium_values_path),
         coredns_values_path=str(coredns_values_path),
@@ -191,7 +189,7 @@ def main(
             cluster_endpoint=cluster["cluster_endpoint"],
             cluster_ca_certificate=cluster["cluster_certificate_authority_data"],
             cluster=cluster["cluster"],
-            aws_auth_configmap=eks_auth["aws_auth_configmap"],
+            auth_dependencies=auth_dependencies,
             region=config_data["region"],
             enable_flux=config_data["enable_flux"],
             flux_values_path=str(flux_values_path),

@@ -582,6 +582,8 @@ def create_node_groups(
             ],
             opts=pulumi.ResourceOptions(depends_on=[lt]),
         )
+
+        #TODO: wait_for_capacity_timeout review if this paramter add automated wait 
         
         autoscaling_groups[ng_name] = asg
 

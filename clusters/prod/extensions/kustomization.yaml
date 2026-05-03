@@ -3,3 +3,4 @@ kind: Kustomization
 resources:
   - infra.yaml
   - system.yaml
+  - kgateway-crs.yaml

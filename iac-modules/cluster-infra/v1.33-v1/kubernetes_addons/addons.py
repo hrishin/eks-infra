@@ -49,6 +49,14 @@ _DEFAULT_CILIUM_VALUES_BASE: Dict[str, Any] = {
             ],
         },
     },
+    "tolerations": [
+        {
+            "effect": "NoSchedule",
+            "key": "node-type",
+            "operator": "Equal",
+            "value": "core",
+        }
+    ],
     "image": {
         "repository": "quay.io/cilium/cilium",
         "tag": "v1.16.4",
@@ -369,7 +377,7 @@ def create_kubernetes_addons(
     enable_cilium: bool,
     enable_coredns: bool,
     cluster: Any,
-    aws_auth_configmap: Any,
+    auth_dependencies: List[Any],
     region: str,
     cilium_values_path: Optional[str] = None,
     coredns_values_path: Optional[str] = None,
@@ -385,7 +393,7 @@ def create_kubernetes_addons(
         enable_cilium: Whether to install Cilium CNI
         enable_coredns: Whether to install CoreDNS
         cluster: EKS cluster resource (for dependency)
-        aws_auth_configmap: aws-auth ConfigMap (for dependency)
+        auth_dependencies: List of auth resources (Access Entries / policy associations) to depend on
         region: AWS region where the cluster lives
         cilium_values_path: Optional path to YAML file with base values for the Cilium Helm release
         coredns_values_path: Optional path to YAML file with base values for the CoreDNS Helm release
@@ -427,7 +435,7 @@ users:
         - --region
         - {region}
 """),
-        opts=pulumi.ResourceOptions(depends_on=[cluster, aws_auth_configmap]),
+        opts=pulumi.ResourceOptions(depends_on=[cluster, *auth_dependencies]),
     )
     
     result = {}
@@ -480,7 +488,7 @@ users:
             skip_await=True,
             opts=pulumi.ResourceOptions(
                 provider=k8s_provider,
-                depends_on=[cluster, aws_auth_configmap],
+                depends_on=[cluster, *auth_dependencies],
                 ignore_changes=["values"],
                 retain_on_delete=True,
             ),
@@ -492,7 +500,7 @@ users:
     if enable_coredns:
         coredns_values = deepcopy(coredns_base_values) if coredns_base_values else deepcopy(_DEFAULT_COREDNS_VALUES)
         
-        deps = [cluster, aws_auth_configmap]
+        deps = [cluster, *auth_dependencies]
         if "cilium_release" in result:
             deps.append(result["cilium_release"])
         
@@ -541,7 +549,7 @@ def bootstrap_flux(
     cluster_endpoint: pulumi.Output,
     cluster_ca_certificate: pulumi.Output,
     cluster: Any,
-    aws_auth_configmap: Any,
+    auth_dependencies: List[Any],
     region: str,
     enable_flux: bool,
     *,
@@ -563,7 +571,7 @@ def bootstrap_flux(
     if not enable_flux:
         return {}
 
-    dependencies: List[pulumi.Resource] = [cluster, aws_auth_configmap]
+    dependencies: List[pulumi.Resource] = [cluster, *auth_dependencies]
     if additional_dependencies:
         dependencies.extend(additional_dependencies)
 

@@ -76,7 +76,7 @@ def create_eks_cluster(
             public_access_cidrs=["0.0.0.0/0"],
         ),
         access_config=aws.eks.ClusterAccessConfigArgs(
-            authentication_mode="API_AND_CONFIG_MAP",
+            authentication_mode="API",
         ),
         enabled_cluster_log_types=["api"],
         bootstrap_self_managed_addons=False,
@@ -300,6 +300,7 @@ def create_eks_cluster(
         admin_access_policy_associations.append(admin_policy_association)
     
     # Create EKS Access Entry for node role
+    #TODO: review
     node_access_entry = aws.eks.AccessEntry(
         f"{cluster_name}-node-role-access",
         cluster_name=cluster.name,
@@ -319,5 +320,6 @@ def create_eks_cluster(
         "node_instance_profile_name": node_instance_profile.name,
         "cluster_service_role_arn": cluster_role.arn,
         "cluster_admin_access_policy_associations": admin_access_policy_associations,
+        "node_access_entry": node_access_entry,
     }
 
