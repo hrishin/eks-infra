@@ -14,11 +14,9 @@ spec:
         name: cert-manager
         namespace: cert-manager
   interval: 2m
-  install:
-    crds: Create
-  upgrade:
-    crds: CreateReplace
   values:
+    crds:
+      enabled: true
     tolerations:
       - key: node-type
         operator: Equal
