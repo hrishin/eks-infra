@@ -152,14 +152,7 @@ spec:
         node-type: mimir
 
     nginx:
-      replicas: 1
-      tolerations:
-        - key: node-type
-          operator: Equal
-          value: mimir
-          effect: NoSchedule
-      nodeSelector:
-        node-type: mimir
+      enabled: false
 
     overrides_exporter:
       replicas: 1
