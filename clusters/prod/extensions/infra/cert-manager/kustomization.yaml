@@ -3,4 +3,4 @@ kind: Kustomization
 namespace: cert-manager
 resources:
   - ../../../../../iac-modules/extensions/namespace/v1/
-  - ../../../../../iac-modules/extensions/cert-manager/current/
+  - ../../../../../iac-modules/extensions/cert-manager/v1.17.0-v1/
