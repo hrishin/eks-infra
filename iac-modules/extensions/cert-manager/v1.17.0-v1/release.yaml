@@ -46,11 +46,4 @@ spec:
           operator: Exists
           effect: NoSchedule
     startupapicheck:
-      tolerations:
-        - key: node-type
-          operator: Equal
-          value: core
-          effect: NoSchedule
-        - key: node.cilium.io/agent-not-ready
-          operator: Exists
-          effect: NoSchedule
+      enabled: false
