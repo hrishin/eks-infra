@@ -532,11 +532,12 @@ def create_node_groups(
             # For simplicity, using all subnets. In production, filter by AZ
             pass
         
-        refresh_triggers = [
+        extra_triggers = {
             trigger
             for trigger in ng_config.get("refresh_triggers", [])
             if trigger != "launch_template"
-        ]
+        }
+        refresh_triggers = list({"launch_template"} | extra_triggers)
 
         # Create Auto Scaling Group
         asg = aws.autoscaling.Group(
@@ -556,7 +557,7 @@ def create_node_groups(
                     min_healthy_percentage=ng_config.get("refresh_min_healthy_percent", 90),
                     skip_matching=ng_config.get("refresh_skip_matching", True),
                 ),
-                triggers=refresh_triggers or None,
+                triggers=refresh_triggers,
             ),
             health_check_type="EC2",
             health_check_grace_period=300,
