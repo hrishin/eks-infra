@@ -55,7 +55,12 @@ _DEFAULT_CILIUM_VALUES_BASE: Dict[str, Any] = {
             "key": "node-type",
             "operator": "Equal",
             "value": "core",
-        }
+        },
+        {
+            "effect": "NoSchedule",
+            "key": "node.cilium.io/agent-not-ready",
+            "operator": "Exists",
+        },
     ],
     "image": {
         "repository": "quay.io/cilium/cilium",
