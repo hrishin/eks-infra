@@ -15,6 +15,12 @@ spec:
         namespace: logging
   interval: 2m
   timeout: 10m
+  install:
+    disableHooks: true
+  upgrade:
+    disableHooks: true
+  uninstall:
+    disableHooks: true
   dependsOn:
     - name: elasticsearch
       namespace: logging
