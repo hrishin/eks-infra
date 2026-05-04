@@ -17,6 +17,28 @@ spec:
   dependsOn:
     - name: elasticsearch
       namespace: logging
+  postRenderers:
+    - kustomize:
+        patches:
+          - patch: |
+              apiVersion: batch/v1
+              kind: Job
+              metadata:
+                name: pre-install-kibana-kibana
+              spec:
+                template:
+                  spec:
+                    tolerations:
+                      - key: node-type
+                        operator: Equal
+                        value: logging
+                        effect: NoSchedule
+                    nodeSelector:
+                      node-type: logging
+            target:
+              group: batch
+              version: v1
+              kind: Job
   values:
     replicas: 1
 
