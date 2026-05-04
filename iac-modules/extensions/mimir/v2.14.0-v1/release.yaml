@@ -31,12 +31,15 @@ spec:
         usage_stats:
           enabled: false
         blocks_storage:
+          backend: filesystem
           filesystem:
             dir: /data/blocks
         alertmanager_storage:
+          backend: filesystem
           filesystem:
             dir: /data/alertmanager
         ruler_storage:
+          backend: filesystem
           filesystem:
             dir: /data/ruler
         ruler:
