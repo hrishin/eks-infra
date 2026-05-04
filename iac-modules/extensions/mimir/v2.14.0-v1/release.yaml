@@ -43,11 +43,11 @@ spec:
           filesystem:
             dir: /data/ruler
         alertmanager:
-          data_dir: /tmp/alertmanager
+          data_dir: /data/alertmanager-work
         compactor:
-          data_dir: /tmp/compactor
+          data_dir: /data/compactor-work
         ruler:
-          rule_path: /tmp/ruler
+          rule_path: /data/ruler-work
         ingester:
           ring:
             replication_factor: 1
@@ -161,6 +161,10 @@ spec:
           effect: NoSchedule
       nodeSelector:
         node-type: mimir
+      persistentVolume:
+        enabled: true
+        size: 2Gi
+        storageClass: local-path
 
     nginx:
       enabled: false
