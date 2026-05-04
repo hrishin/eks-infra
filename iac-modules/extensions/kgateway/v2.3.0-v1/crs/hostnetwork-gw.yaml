@@ -55,9 +55,15 @@ spec:
   - name: http
     protocol: HTTP
     port: 3080
+    allowedRoutes:
+      namespaces:
+        from: All
   - name: https
     protocol: HTTPS
     port: 30443
+    allowedRoutes:
+      namespaces:
+        from: All
     tls:
       mode: Terminate
       certificateRefs:
