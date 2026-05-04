@@ -23,13 +23,17 @@ spec:
     nodeSelector:
       node-type: mimir
 
+    env:
+      GF_SERVER_ROOT_URL: "%(protocol)s://%(domain)s/grafana"
+      GF_SERVER_SERVE_FROM_SUB_PATH: "true"
+
     datasources:
       datasources.yaml:
         apiVersion: 1
         datasources:
           - name: Mimir
             type: prometheus
-            url: http://main-gateway.kgateway-system.svc.cluster.local:3080/prometheus
+            url: http://main-gateway.kgateway-system.svc.cluster.local:3080/mimir/prometheus
             access: proxy
             isDefault: true
 

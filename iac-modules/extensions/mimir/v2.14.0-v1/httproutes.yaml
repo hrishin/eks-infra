@@ -11,14 +11,26 @@ spec:
     - matches:
         - path:
             type: PathPrefix
-            value: /api/v1/push
+            value: /mimir/api/v1/push
+      filters:
+        - type: URLRewrite
+          urlRewrite:
+            path:
+              type: ReplacePrefixMatch
+              replacePrefixMatch: /api/v1/push
       backendRefs:
         - name: mimir-distributor
           port: 8080
     - matches:
         - path:
             type: PathPrefix
-            value: /otlp/v1/metrics
+            value: /mimir/otlp/v1/metrics
+      filters:
+        - type: URLRewrite
+          urlRewrite:
+            path:
+              type: ReplacePrefixMatch
+              replacePrefixMatch: /otlp/v1/metrics
       backendRefs:
         - name: mimir-distributor
           port: 8080
@@ -36,7 +48,13 @@ spec:
     - matches:
         - path:
             type: PathPrefix
-            value: /prometheus
+            value: /mimir/prometheus
+      filters:
+        - type: URLRewrite
+          urlRewrite:
+            path:
+              type: ReplacePrefixMatch
+              replacePrefixMatch: /prometheus
       backendRefs:
         - name: mimir-query-frontend
           port: 8080
@@ -54,14 +72,26 @@ spec:
     - matches:
         - path:
             type: PathPrefix
-            value: /ruler
+            value: /mimir/ruler
+      filters:
+        - type: URLRewrite
+          urlRewrite:
+            path:
+              type: ReplacePrefixMatch
+              replacePrefixMatch: /ruler
       backendRefs:
         - name: mimir-ruler
           port: 8080
     - matches:
         - path:
             type: PathPrefix
-            value: /api/v1/rules
+            value: /mimir/api/v1/rules
+      filters:
+        - type: URLRewrite
+          urlRewrite:
+            path:
+              type: ReplacePrefixMatch
+              replacePrefixMatch: /api/v1/rules
       backendRefs:
         - name: mimir-ruler
           port: 8080
@@ -79,14 +109,26 @@ spec:
     - matches:
         - path:
             type: PathPrefix
-            value: /alertmanager
+            value: /mimir/alertmanager
+      filters:
+        - type: URLRewrite
+          urlRewrite:
+            path:
+              type: ReplacePrefixMatch
+              replacePrefixMatch: /alertmanager
       backendRefs:
         - name: mimir-alertmanager
           port: 8080
     - matches:
         - path:
             type: PathPrefix
-            value: /multitenant_alertmanager
+            value: /mimir/multitenant_alertmanager
+      filters:
+        - type: URLRewrite
+          urlRewrite:
+            path:
+              type: ReplacePrefixMatch
+              replacePrefixMatch: /multitenant_alertmanager
       backendRefs:
         - name: mimir-alertmanager
           port: 8080

@@ -8,6 +8,16 @@ spec:
     - name: main-gateway
       namespace: kgateway-system
   rules:
-    - backendRefs:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /grafana
+      filters:
+        - type: URLRewrite
+          urlRewrite:
+            path:
+              type: ReplacePrefixMatch
+              replacePrefixMatch: /
+      backendRefs:
         - name: grafana
           port: 80
