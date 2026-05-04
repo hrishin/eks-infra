@@ -24,7 +24,7 @@ spec:
       node-type: mimir
 
     env:
-      GF_SERVER_ROOT_URL: "https://infra-cluster-nlb-4d3b6ef-eb4365dd5fabbab5.elb.eu-west-2.amazonaws.com/grafana"
+      GF_SERVER_ROOT_URL: "https://${NLB_DNS}/grafana"
       GF_SERVER_SERVE_FROM_SUB_PATH: "true"
 
     datasources:

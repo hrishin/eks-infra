@@ -202,6 +202,7 @@ def main(
             flux_git_interval=config_data["flux_git_interval"],
             flux_kustomization_interval=config_data["flux_kustomization_interval"],
             aws_lbc_role_arn=aws_lbc_irsa["role_arn"],
+            nlb_dns=networking.get("nlb_dns_name"),
             additional_dependencies=flux_dependencies,
         )
 
