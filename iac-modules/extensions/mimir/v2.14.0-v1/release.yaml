@@ -42,6 +42,10 @@ spec:
           backend: filesystem
           filesystem:
             dir: /data/ruler
+        alertmanager:
+          data_dir: /tmp/alertmanager
+        compactor:
+          data_dir: /tmp/compactor
         ruler:
           rule_path: /tmp/ruler
         ingester:
@@ -60,7 +64,9 @@ spec:
       nodeSelector:
         node-type: mimir
       persistentVolume:
-        enabled: false
+        enabled: true
+        size: 10Gi
+        storageClass: local-path
 
     store_gateway:
       replicas: 1
@@ -74,7 +80,9 @@ spec:
       nodeSelector:
         node-type: mimir
       persistentVolume:
-        enabled: false
+        enabled: true
+        size: 10Gi
+        storageClass: local-path
 
     compactor:
       replicas: 1
@@ -86,7 +94,9 @@ spec:
       nodeSelector:
         node-type: mimir
       persistentVolume:
-        enabled: false
+        enabled: true
+        size: 10Gi
+        storageClass: local-path
 
     alertmanager:
       replicas: 1
@@ -98,7 +108,9 @@ spec:
       nodeSelector:
         node-type: mimir
       persistentVolume:
-        enabled: false
+        enabled: true
+        size: 1Gi
+        storageClass: local-path
 
     distributor:
       replicas: 1
