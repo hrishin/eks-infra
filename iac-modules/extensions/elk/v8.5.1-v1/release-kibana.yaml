@@ -20,31 +20,26 @@ spec:
   postRenderers:
     - kustomize:
         patches:
-          # Inject tolerations into all hook jobs so they can be scheduled
+          # Strategic merge patch targeting all Jobs to inject logging tolerations
           - patch: |
-              - op: add
-                path: /spec/template/spec/tolerations
-                value:
-                  - key: node-type
-                    operator: Equal
-                    value: logging
-                    effect: NoSchedule
-              - op: add
-                path: /spec/template/spec/nodeSelector
-                value:
-                  node-type: logging
+              apiVersion: batch/v1
+              kind: Job
+              metadata:
+                name: not-used
+              spec:
+                template:
+                  spec:
+                    tolerations:
+                      - key: node-type
+                        operator: Equal
+                        value: logging
+                        effect: NoSchedule
+                    nodeSelector:
+                      node-type: logging
             target:
               group: batch
               version: v1
               kind: Job
-          # Change hook delete policy to before-hook-creation so stale hook
-          # resources are cleaned up before the next install/upgrade attempt
-          - patch: |
-              - op: replace
-                path: /metadata/annotations/helm.sh~1hook-delete-policy
-                value: before-hook-creation
-            target:
-              annotationSelector: "helm.sh/hook-delete-policy"
   values:
     replicas: 1
 
