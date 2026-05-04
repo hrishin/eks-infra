@@ -39,6 +39,25 @@ node_groups:
         value: "mimir"
         effect: "NoSchedule"
 
+  logging:
+    instance_types: ["t3.large"]
+    await: true
+    desired_size: 1
+    min_size: 1
+    max_size: 3
+    disk_size: 50
+    max_pods: 110
+    ami_id: "ami-060bb37b943ff8d8e"
+    ami_type: "CUSTOM"
+    labels:
+      node-type: "logging"
+      workload: "monitoring"
+      environment: "production"
+    taints:
+      - key: "node-type"
+        value: "logging"
+        effect: "NoSchedule"
+
   # # G4 instances - General purpose GPU instances with T4 (more widely available)
   # g4-training:
   #   instance_types: ["g4dn.xlarge", "g4dn.2xlarge"]
