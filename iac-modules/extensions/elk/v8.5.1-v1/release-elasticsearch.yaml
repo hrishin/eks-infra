@@ -14,19 +14,12 @@ spec:
         name: elastic
         namespace: logging
   interval: 2m
+  timeout: 10m
   values:
     replicas: 1
     minimumMasterNodes: 1
 
     esJavaOpts: "-Xmx1g -Xms1g"
-
-    protocol: http
-
-    esConfig:
-      elasticsearch.yml: |
-        xpack.security.enabled: false
-        xpack.security.enrollment.enabled: false
-        xpack.security.http.ssl.enabled: false
 
     resources:
       requests:
