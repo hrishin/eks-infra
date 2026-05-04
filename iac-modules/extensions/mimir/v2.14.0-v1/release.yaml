@@ -28,6 +28,8 @@ spec:
         common:
           storage:
             backend: filesystem
+        usage_stats:
+          enabled: false
         blocks_storage:
           filesystem:
             dir: /data/blocks
@@ -37,6 +39,8 @@ spec:
         ruler_storage:
           filesystem:
             dir: /data/ruler
+        ruler:
+          rule_path: /tmp/ruler
         ingester:
           ring:
             replication_factor: 1
@@ -53,9 +57,7 @@ spec:
       nodeSelector:
         node-type: mimir
       persistentVolume:
-        enabled: true
-        size: 10Gi
-        storageClass: gp2
+        enabled: false
 
     store_gateway:
       replicas: 1
@@ -69,9 +71,7 @@ spec:
       nodeSelector:
         node-type: mimir
       persistentVolume:
-        enabled: true
-        size: 10Gi
-        storageClass: gp2
+        enabled: false
 
     compactor:
       replicas: 1
@@ -83,9 +83,7 @@ spec:
       nodeSelector:
         node-type: mimir
       persistentVolume:
-        enabled: true
-        size: 10Gi
-        storageClass: gp2
+        enabled: false
 
     alertmanager:
       replicas: 1
@@ -97,9 +95,7 @@ spec:
       nodeSelector:
         node-type: mimir
       persistentVolume:
-        enabled: true
-        size: 1Gi
-        storageClass: gp2
+        enabled: false
 
     distributor:
       replicas: 1
