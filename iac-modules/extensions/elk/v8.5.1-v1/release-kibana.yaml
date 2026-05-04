@@ -21,20 +21,17 @@ spec:
     - kustomize:
         patches:
           - patch: |
-              apiVersion: batch/v1
-              kind: Job
-              metadata:
-                name: pre-install-kibana-kibana
-              spec:
-                template:
-                  spec:
-                    tolerations:
-                      - key: node-type
-                        operator: Equal
-                        value: logging
-                        effect: NoSchedule
-                    nodeSelector:
-                      node-type: logging
+              - op: add
+                path: /spec/template/spec/tolerations
+                value:
+                  - key: node-type
+                    operator: Equal
+                    value: logging
+                    effect: NoSchedule
+              - op: add
+                path: /spec/template/spec/nodeSelector
+                value:
+                  node-type: logging
             target:
               group: batch
               version: v1
