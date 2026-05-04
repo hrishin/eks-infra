@@ -20,10 +20,13 @@ spec:
 
     esJavaOpts: "-Xmx1g -Xms1g"
 
+    protocol: http
+
     esConfig:
       elasticsearch.yml: |
         xpack.security.enabled: false
         xpack.security.enrollment.enabled: false
+        xpack.security.http.ssl.enabled: false
 
     resources:
       requests:
