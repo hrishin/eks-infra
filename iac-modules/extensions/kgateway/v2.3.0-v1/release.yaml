@@ -13,8 +13,6 @@ spec:
         kind: HelmRepository
         name: kgateway
   interval: 2m
-  dependsOn:
-    - name: kgateway-crds
   values:
     tolerations:
       - key: node-type
