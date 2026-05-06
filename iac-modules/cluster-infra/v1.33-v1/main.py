@@ -13,7 +13,7 @@ from eks_cluster.cluster import create_eks_cluster
 from kubernetes_addons.addons import create_kubernetes_addons, bootstrap_flux
 from networking.networking import create_networking
 from node_groups.node_groups import create_node_groups, await_node_groups_ready
-from iam.irsa import create_aws_lbc_irsa
+from iam.irsa import create_aws_lbc_irsa, create_karpenter_pod_identity
 from shared.config import get_pulumi_config, load_node_groups_config
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -143,6 +143,15 @@ def main(
         cluster_name=config_data["cluster_name"],
         oidc_issuer_url=cluster["cluster_oidc_issuer_url"],
         oidc_provider_arn=cluster["cluster_oidc_provider_arn"],
+        tags=tags,
+    )
+
+    # 4.6. Create Karpenter Pod Identity
+    pulumi.log.info("Creating Karpenter Pod Identity...")
+    create_karpenter_pod_identity(
+        cluster_name=config_data["cluster_name"],
+        node_role_arn=cluster["node_group_service_role_arn"],
+        pod_identity_agent_addon=cluster["pod_identity_agent_addon"],
         tags=tags,
     )
 

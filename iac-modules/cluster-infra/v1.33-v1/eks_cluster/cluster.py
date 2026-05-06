@@ -308,7 +308,17 @@ def create_eks_cluster(
         type="EC2_LINUX",
         opts=pulumi.ResourceOptions(depends_on=[cluster]),
     )
-    
+
+    pod_identity_agent = aws.eks.Addon(
+        f"{cluster_name}-pod-identity-agent",
+        cluster_name=cluster.name,
+        addon_name="eks-pod-identity-agent",
+        resolve_conflicts_on_create="OVERWRITE",
+        resolve_conflicts_on_update="OVERWRITE",
+        tags={**tags, "Name": f"{cluster_name}-pod-identity-agent"},
+        opts=pulumi.ResourceOptions(depends_on=[cluster]),
+    )
+
     return {
         "cluster": cluster,
         "cluster_endpoint": cluster.endpoint,
@@ -317,9 +327,11 @@ def create_eks_cluster(
         "cluster_oidc_issuer_url": oidc_issuer,
         "cluster_oidc_provider_arn": oidc_provider.arn,
         "node_group_service_role_arn": node_role.arn,
+        "node_role_name": node_role.name,
         "node_instance_profile_name": node_instance_profile.name,
         "cluster_service_role_arn": cluster_role.arn,
         "cluster_admin_access_policy_associations": admin_access_policy_associations,
         "node_access_entry": node_access_entry,
+        "pod_identity_agent_addon": pod_identity_agent,
     }
 

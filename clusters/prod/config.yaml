@@ -81,3 +81,62 @@ node_groups:
   #     - key: "workload"
   #       value: "ml-training"
   #       effect: "NoSchedule"
+
+# Karpenter NodePool definitions — mirror the node_groups above.
+# Pulumi reads this to create the IRSA role; Flux manifests in
+# iac-modules/extensions/karpenter/v1.3.3-v1/crs/ implement the NodePools.
+# To add a new pool: add it here AND add a matching nodepool-<name>.yaml in crs/.
+# karpenter_node_pools:
+#   # Core compute nodes for system workloads
+#   core:
+#     instance_types: ["t2.medium"]
+#     capacity_type: ["on-demand"]
+#     min_size: 0
+#     max_size: 4
+#     labels:
+#       node-type: "core"
+#       workload: "system"
+#       environment: "production"
+#     taints:
+#       - key: "node-type"
+#         value: "core"
+#         effect: "NoSchedule"
+#     limits:
+#       cpu: "8"
+#       memory: "16Gi"
+
+#   # Mimir nodes - memory-optimized for metrics storage and Grafana
+#   mimir:
+#     instance_types: ["t3.large", "t3.xlarge", "t3a.large", "t3a.xlarge"]
+#     capacity_type: ["on-demand", "spot"]
+#     min_size: 0
+#     max_size: 9
+#     labels:
+#       node-type: "mimir"
+#       workload: "monitoring"
+#       environment: "production"
+#     taints:
+#       - key: "node-type"
+#         value: "mimir"
+#         effect: "NoSchedule"
+#     limits:
+#       cpu: "24"
+#       memory: "96Gi"
+
+#   # Logging nodes
+#   logging:
+#     instance_types: ["t3.large", "t3.xlarge", "t3a.large", "t3a.xlarge"]
+#     capacity_type: ["on-demand", "spot"]
+#     min_size: 0
+#     max_size: 9
+#     labels:
+#       node-type: "logging"
+#       workload: "monitoring"
+#       environment: "production"
+#     taints:
+#       - key: "node-type"
+#         value: "logging"
+#         effect: "NoSchedule"
+#     limits:
+#       cpu: "24"
+#       memory: "96Gi"

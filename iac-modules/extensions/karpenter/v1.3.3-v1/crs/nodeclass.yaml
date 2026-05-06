@@ -1,0 +1,21 @@
+apiVersion: karpenter.k8s.aws/v1
+kind: EC2NodeClass
+metadata:
+  name: default
+spec:
+  # IAM role for nodes launched by Karpenter (matches the managed node group role)
+  role: "${CLUSTER_NAME}-node-group-service-role"
+  # Discover subnets tagged by Pulumi with karpenter.sh/discovery
+  subnetSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: "${CLUSTER_NAME}"
+  # Discover worker security group tagged by Pulumi with karpenter.sh/discovery
+  securityGroupSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: "${CLUSTER_NAME}"
+  # Use Amazon Linux 2023 — change to amiSelectorTerms with id: for a custom AMI
+  amiSelectorTerms:
+    - alias: al2023@latest
+  tags:
+    karpenter.sh/discovery: "${CLUSTER_NAME}"
+    ManagedBy: karpenter

@@ -5,4 +5,5 @@ resources:
   - system.yaml
   - kgateway-crs.yaml
   - cert-manager-crs.yaml
-  - elk.yaml
+  - karpenter-crs.yaml
+  # - elk.yaml

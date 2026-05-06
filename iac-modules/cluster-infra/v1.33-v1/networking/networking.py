@@ -81,6 +81,7 @@ def create_networking(
                 "Name": f"{cluster_name}-private-subnet-{i}",
                 f"kubernetes.io/cluster/{cluster_name}": "owned",
                 "kubernetes.io/role/internal-elb": "1",
+                "karpenter.sh/discovery": cluster_name,
             },
         )
         private_subnets.append(subnet)
@@ -199,6 +200,7 @@ def create_networking(
             **tags,
             "Name": f"{cluster_name}-worker-nodes-sg",
             f"kubernetes.io/cluster/{cluster_name}": "owned",
+            "karpenter.sh/discovery": cluster_name,
         },
     )
     

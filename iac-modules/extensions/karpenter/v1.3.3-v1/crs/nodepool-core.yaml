@@ -1,0 +1,36 @@
+apiVersion: karpenter.sh/v1
+kind: NodePool
+metadata:
+  name: core
+spec:
+  template:
+    metadata:
+      labels:
+        node-type: core
+        workload: system
+        environment: production
+    spec:
+      nodeClassRef:
+        group: karpenter.k8s.aws
+        kind: EC2NodeClass
+        name: default
+      taints:
+        - key: node-type
+          value: core
+          effect: NoSchedule
+      requirements:
+        - key: karpenter.k8s.aws/instance-type
+          operator: In
+          values: ["t2.medium"]
+        - key: karpenter.sh/capacity-type
+          operator: In
+          values: ["on-demand"]
+        - key: kubernetes.io/arch
+          operator: In
+          values: ["amd64"]
+  limits:
+    cpu: "8"
+    memory: 16Gi
+  disruption:
+    consolidationPolicy: WhenEmptyOrUnderutilized
+    consolidateAfter: 1m
