@@ -19,7 +19,7 @@ spec:
           value: core
           effect: NoSchedule
       requirements:
-        - key: karpenter.k8s.aws/instance-type
+        - key: node.kubernetes.io/instance-type
           operator: In
           values: ["t2.medium"]
         - key: karpenter.sh/capacity-type

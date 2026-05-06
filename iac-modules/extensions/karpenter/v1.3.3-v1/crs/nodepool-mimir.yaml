@@ -19,7 +19,7 @@ spec:
           value: mimir
           effect: NoSchedule
       requirements:
-        - key: karpenter.k8s.aws/instance-type
+        - key: node.kubernetes.io/instance-type
           operator: In
           values: ["t3.large", "t3.xlarge", "t3a.large", "t3a.xlarge"]
         - key: karpenter.sh/capacity-type
