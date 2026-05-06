@@ -32,5 +32,5 @@ spec:
     cpu: "24"
     memory: 96Gi
   disruption:
-    consolidationPolicy: WhenEmptyOrUnderutilized
-    consolidateAfter: 5m
+    consolidationPolicy: WhenEmpty
+    consolidateAfter: 30s

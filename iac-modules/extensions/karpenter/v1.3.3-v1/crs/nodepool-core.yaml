@@ -32,5 +32,5 @@ spec:
     cpu: "8"
     memory: 16Gi
   disruption:
-    consolidationPolicy: WhenEmptyOrUnderutilized
-    consolidateAfter: 1m
+    consolidationPolicy: WhenEmpty
+    consolidateAfter: 30s
