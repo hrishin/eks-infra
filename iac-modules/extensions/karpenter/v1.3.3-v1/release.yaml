@@ -13,10 +13,6 @@ spec:
         kind: HelmRepository
         name: karpenter
   interval: 2m
-  install:
-    crds: CreateReplace
-  upgrade:
-    crds: CreateReplace
   values:
     settings:
       clusterName: "${CLUSTER_NAME}"

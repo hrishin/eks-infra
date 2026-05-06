@@ -16,7 +16,7 @@ spec:
   interval: 2m
   values:
     crds:
-      enabled: true
+      enabled: false
     tolerations:
       - key: node-type
         operator: Equal
